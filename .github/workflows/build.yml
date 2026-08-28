@@ -1,0 +1,20 @@
+name: Build
+
+# Release artifacts (PyInstaller --onedir, Inno Setup, AppImage, .deb).
+# Placeholder for M0; implemented on M7 (spec §12).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: echo "PyInstaller --onedir build lands on M7."

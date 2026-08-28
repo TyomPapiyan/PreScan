@@ -1,0 +1,2 @@
+PLACEHOLDER (M0). Full license/notice text is added before the M7 release build.
+See licenses/README.md for the component, source and obligations.

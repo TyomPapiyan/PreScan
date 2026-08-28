@@ -1,0 +1,49 @@
+# PreScan signal weights (spec §8.4).
+# Editable without touching code. Consumed by core/scoring.py.
+
+[local_engine]
+clamav_detection      = 100
+defender_detection    = 100
+yara_critical         = 90
+yara_high             = 75
+yara_medium           = 45
+yara_low              = 15
+
+[reputation]
+malwarebazaar_hit     = 100
+vt_malicious_per_hit  = 22    # multiplied by the number of hits, capped at 90
+vt_known_clean        = -20
+threatfox_ioc         = 85
+safebrowsing_malware  = 100
+urlhaus_hit           = 95
+
+[ml]
+prob_ge_090           = 70
+prob_ge_070           = 50
+prob_ge_050           = 25
+prob_lt_020           = -10
+
+[static]
+high_entropy_unsigned = 30
+extension_mismatch    = 40
+injection_imports     = 35    # VirtualAlloc + WriteProcessMemory + CreateRemoteThread
+tls_callbacks         = 15
+large_overlay         = 10
+no_signature          = 8
+valid_trusted_signature = -25
+
+[documents]
+vba_macro             = 30
+vba_autoexec          = 45
+vba_obfuscated        = 40
+pdf_javascript        = 35
+pdf_openaction        = 35
+pdf_embedded_exe      = 60
+
+[capability]
+high_risk_capability  = 30    # per capability, capped at 60
+medium_risk_capability = 10
+
+[archive]
+password_protected_with_exe = 35
+bomb_guard_triggered  = 50

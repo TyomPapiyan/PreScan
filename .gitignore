@@ -1,0 +1,58 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+
+# --- Tooling caches ---
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# --- Qt i18n compiled catalogs (generated from .ts) ---
+*.qm
+
+# --- Secrets / user data — MUST NOT be committed (spec §4, §10.5, §11.3) ---
+# API keys live only in the OS keyring; never in the repo.
+
+# --- Never committed: malware samples, EICAR, rules, model, AV databases ---
+# (spec §4 "не коммитятся никогда")
+*.onnx
+model.onnx
+/rules/
+*.yar
+*.yara
+*.cvd
+*.cld
+samples/
+malware/
+
+# --- Build artifacts ---
+*.spec.bak
+prescan.dist/
+prescan.build/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Local runtime artifacts — never committed ---
+# SQLite scan history/cache belongs in the user data dir, not the repo.
+*.db
+*.sqlite3
+*.log
+
+# --- Local working documents, not part of the distributed project ---
+CLAUDE.md
+PRESCAN-SPEC.md

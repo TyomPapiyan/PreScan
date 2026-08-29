@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# PreScan pre-push hook: blocks the push unless the full local checklist passes.
+# Stored in the repo (git does not track .git/hooks). Enable once with:
+#     git config core.hooksPath scripts/hooks
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+echo "pre-push: running scripts/check.sh ..."
+if ! "$repo_root/scripts/check.sh"; then
+    echo "pre-push: checks failed — push aborted." >&2
+    exit 1
+fi

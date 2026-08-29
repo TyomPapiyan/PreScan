@@ -32,10 +32,11 @@ uv venv --python 3.12 .venv
 source .venv/bin/activate
 uv pip install -e '.[core,dev]'
 
-ruff check .
-ruff format --check .
-mypy src/
-pytest
+# Enable the pre-push hook so the full checklist runs automatically (once):
+git config core.hooksPath scripts/hooks
+
+# Run the full local checklist (ruff, ruff format, mypy x2, pytest) any time:
+scripts/check.sh
 ```
 
 ## CLI

@@ -16,22 +16,30 @@ from prescan.core.config import AppConfig
 from prescan.core.models import ScanRequest, StageStatus, TargetKind, Verdict
 from prescan.core.pipeline import Pipeline
 
-_CLEAN_BINARY = Path("/bin/ls")
+# The clean reference binary for the false-positive guard (§8.6), per platform.
+_CLEAN_BINARY = (
+    Path(r"C:\Windows\System32\notepad.exe") if sys.platform == "win32" else Path("/bin/ls")
+)
 
 
-@pytest.mark.skipif(sys.platform.startswith("win"), reason="Linux clean-file test")
 @pytest.mark.asyncio
 async def test_clean_binary_is_never_flagged() -> None:
+    """§8.6: a known-clean OS binary must never be SUSPICIOUS or DANGEROUS.
+
+    Runs on both platforms with each platform's own reference binary — this is
+    the primary false-positive guard and must not be silently skipped.
+    """
     if not _CLEAN_BINARY.exists():
-        pytest.skip("/bin/ls not present")
+        pytest.skip(f"reference clean binary not present: {_CLEAN_BINARY}")
     request = ScanRequest(target_kind=TargetKind.FILE, file_path=_CLEAN_BINARY, allow_network=False)
     report = await Pipeline(AppConfig.load()).run(request)
     assert report.verdict in {Verdict.SAFE, Verdict.UNKNOWN}
+    assert report.verdict not in {Verdict.SUSPICIOUS, Verdict.DANGEROUS}
     assert report.file is not None
     assert report.file.sha256
 
 
-@pytest.mark.skipif(sys.platform.startswith("win"), reason="Linux clean-file test")
+@pytest.mark.skipif(sys.platform == "win32", reason="asserts the Linux Defender skip")
 @pytest.mark.asyncio
 async def test_defender_skipped_on_linux() -> None:
     if not _CLEAN_BINARY.exists():

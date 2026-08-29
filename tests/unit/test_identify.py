@@ -4,18 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from prescan.core.identify import identify
+from tests.fixtures.elf import minimal_elf
 
-_ELF_BINARY = Path("/bin/ls")
 
-
-@pytest.mark.skipif(not _ELF_BINARY.exists(), reason="no /bin/ls on this OS")
-def test_identify_elf_binary() -> None:
-    detected_type, _mime, mismatch = identify(_ELF_BINARY)
+def test_identify_elf_binary(tmp_path: Path) -> None:
+    target = tmp_path / "sample"  # no extension -> nothing to contradict
+    target.write_bytes(minimal_elf())
+    detected_type, _mime, mismatch = identify(target)
     assert "ELF" in detected_type
-    assert mismatch is False  # no declared extension to contradict
+    assert mismatch is False
 
 
 def test_deceptive_double_extension_flagged(tmp_path: Path) -> None:

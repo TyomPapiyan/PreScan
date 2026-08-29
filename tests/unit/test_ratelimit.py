@@ -49,9 +49,7 @@ async def test_token_bucket_spaces_requests() -> None:
     # 600/min => one token every 0.1s, no burst. Deterministic fake clock so the
     # assertion is exact and never flakes on a slow/low-resolution CI runner.
     clock = _FakeClock()
-    bucket = TokenBucket(
-        rate_per_minute=600, capacity=1, time_source=clock.now, sleep=clock.sleep
-    )
+    bucket = TokenBucket(rate_per_minute=600, capacity=1, time_source=clock.now, sleep=clock.sleep)
     for _ in range(4):
         await bucket.acquire()
     # First token is immediate, then 3 gaps of 0.1s.

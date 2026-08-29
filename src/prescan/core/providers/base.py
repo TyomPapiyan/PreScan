@@ -84,7 +84,7 @@ class HttpProvider:
         url: str,
         *,
         headers: dict[str, str] | None = None,
-        params: dict[str, str] | None = None,
+        params: dict[str, str | list[str]] | None = None,
         data: dict[str, str] | None = None,
     ) -> httpx.Response | None:
         """Rate-limited HTTP request with retry. Returns None on 404."""

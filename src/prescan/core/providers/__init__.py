@@ -16,7 +16,10 @@ from typing import TYPE_CHECKING
 from prescan.core.providers.base import HttpProvider, Provider
 from prescan.core.providers.malwarebazaar import MalwareBazaarProvider
 from prescan.core.providers.metadefender import MetaDefenderProvider
+from prescan.core.providers.safebrowsing import SafeBrowsingProvider
 from prescan.core.providers.threatfox import ThreatFoxProvider
+from prescan.core.providers.urlhaus import UrlhausProvider
+from prescan.core.providers.urlscan import UrlscanProvider
 from prescan.core.providers.virustotal import VirusTotalProvider
 
 if TYPE_CHECKING:
@@ -27,9 +30,13 @@ __all__ = [
     "MalwareBazaarProvider",
     "MetaDefenderProvider",
     "Provider",
+    "SafeBrowsingProvider",
     "ThreatFoxProvider",
+    "UrlhausProvider",
+    "UrlscanProvider",
     "VirusTotalProvider",
     "build_hash_providers",
+    "build_url_providers",
 ]
 
 
@@ -47,4 +54,24 @@ def build_hash_providers(
         MetaDefenderProvider(get_api_key("metadefender"), limiter, allow_network=allow_network),
         MalwareBazaarProvider(abuse_key, limiter, allow_network=allow_network),
         ThreatFoxProvider(abuse_key, limiter, allow_network=allow_network),
+    ]
+
+
+def build_url_providers(
+    limiter: RateLimiter,
+    *,
+    allow_network: bool = True,
+) -> list[Provider]:
+    """Return the URL-reputation providers (§7 stage 3), keyed from the keyring.
+
+    Safe Browsing uses the hash-prefix API (never the full URL, §6.2).
+    """
+    from prescan.core.config import get_api_key
+
+    abuse_key = get_api_key("malwarebazaar")
+    return [
+        SafeBrowsingProvider(get_api_key("safebrowsing"), limiter, allow_network=allow_network),
+        UrlscanProvider(get_api_key("urlscan"), limiter, allow_network=allow_network),
+        UrlhausProvider(abuse_key, limiter, allow_network=allow_network),
+        VirusTotalProvider(get_api_key("virustotal"), limiter, allow_network=allow_network),
     ]

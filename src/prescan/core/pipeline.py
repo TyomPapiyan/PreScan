@@ -39,14 +39,21 @@ from prescan.core.models import (
     StageResult,
     StageStatus,
     TargetKind,
+    UrlInfo,
     Verdict,
 )
-from prescan.core.providers import build_hash_providers
+from prescan.core.providers import build_hash_providers, build_url_providers
 from prescan.core.providers.base import Provider
 from prescan.core.ratelimit import RateLimiter
 from prescan.core.scoring import score, weight
 from prescan.core.signature import get_signature, signature_signals
 from prescan.core.storage import Storage
+from prescan.core.url import heuristics as url_heuristics
+from prescan.core.url import normalize as url_normalize
+from prescan.core.url.downloader import safe_download
+from prescan.core.url.inspector import inspect as inspect_url
+from prescan.core.url.rdap import domain_age_days
+from prescan.core.url.tls import inspect_tls
 
 log = structlog.get_logger(__name__)
 
@@ -73,10 +80,10 @@ class Pipeline:
         cancel: asyncio.Event | None = None,
     ) -> ScanReport:
         """Execute the full pipeline. on_stage is called on every status change."""
-        if request.target_kind is not TargetKind.FILE:
-            raise NotImplementedError("URL scanning lands on M3")
-        assert request.file_path is not None
         cancel = cancel or asyncio.Event()
+        if request.target_kind is TargetKind.URL:
+            return await self._run_url(request, on_stage=on_stage, cancel=cancel)
+        assert request.file_path is not None
         started = datetime.now(UTC)
         scan_id = uuid.uuid4().hex
 
@@ -414,12 +421,14 @@ class Pipeline:
         stages: list[StageResult],
         unavailable: list[str],
         on_stage: OnStage | None,
+        *,
+        title_key: str = "stage.reputation",
     ) -> None:
         """Record a SKIPPED stage for an unavailable provider (NO_KEY, OFFLINE)."""
         now = datetime.now(UTC)
         st = StageResult(
             stage_id=name,
-            title_key="stage.reputation",
+            title_key=title_key,
             status=StageStatus.SKIPPED,
             availability=availability,
             summary=detail,
@@ -429,6 +438,254 @@ class Pipeline:
         stages.append(st)
         unavailable.append(name)
         _notify(on_stage, st)
+
+    # ------------------------------------------------------------------ #
+    # URL pipeline (§7)
+    # ------------------------------------------------------------------ #
+    async def _run_url(
+        self,
+        request: ScanRequest,
+        *,
+        on_stage: OnStage | None,
+        cancel: asyncio.Event,
+    ) -> ScanReport:
+        """Execute the URL pipeline of §7 and return a report."""
+        assert request.url is not None
+        started = datetime.now(UTC)
+        scan_id = uuid.uuid4().hex
+        self._paths.ensure()
+
+        stages: list[StageResult] = []
+        signals: list[Signal] = []
+        unavailable: list[str] = []
+        file_info_dl: FileInfo | None = None
+        net = request.allow_network and self._config.allow_network
+
+        # Stage 1: normalize
+        with self._stage("url_normalize", "stage.url_normalize", stages, on_stage) as st:
+            nurl = url_normalize.normalize(request.url)
+            st.summary = nurl.host
+        url_info = UrlInfo(
+            original=nurl.original,
+            normalized=nurl.normalized,
+            registrable_domain=nurl.registrable_domain,
+            is_idn=nurl.is_idn,
+            punycode_host=nurl.punycode_host,
+        )
+
+        # Stage 2: heuristics (local, instant)
+        with self._stage("url_heuristics", "stage.url_heuristics", stages, on_stage) as st:
+            heur = url_heuristics.evaluate(nurl)
+            signals += heur
+            st.summary = f"{len(heur)} signal(s)"
+
+        had_authoritative = False
+        if net and not cancel.is_set():
+            # Stage 3: URL reputation providers
+            rep, rep_auth = await self._run_url_providers(
+                request.url, stages, unavailable, on_stage
+            )
+            signals += rep
+            had_authoritative = had_authoritative or rep_auth
+
+            # Stage 4: domain age (RDAP)
+            with self._stage("domain_age", "stage.domain_age", stages, on_stage) as st:
+                age = await domain_age_days(nurl.registrable_domain or nurl.host)
+                url_info.domain_age_days = age
+                if age is not None and age < 30:
+                    signals.append(
+                        self._url_signal(
+                            Severity.HIGH,
+                            25,
+                            "signal.url.young_domain",
+                            f"Domain registered {age} days ago",
+                        )
+                    )
+                st.summary = "unknown" if age is None else f"{age} days"
+
+            # Stage 5: TLS
+            with self._stage("tls", "stage.tls", stages, on_stage) as st:
+                tls = await inspect_tls(nurl.host)
+                url_info.tls_valid = tls.valid
+                url_info.tls_issuer = tls.issuer
+                if tls.valid is False or tls.host_match is False:
+                    signals.append(
+                        self._url_signal(
+                            Severity.MEDIUM,
+                            20,
+                            "signal.url.tls_invalid",
+                            "TLS certificate invalid or host mismatch",
+                        )
+                    )
+                st.summary = "valid" if tls.valid else "invalid/unknown"
+
+            # Stage 6-7: redirects + HEAD metadata
+            with self._stage("redirects", "stage.redirects", stages, on_stage) as st:
+                info = await inspect_url(request.url, follow_redirects=request.follow_redirects)
+                url_info.final_url = info.final_url
+                url_info.redirect_chain = info.redirect_chain
+                url_info.http_status = info.http_status
+                url_info.content_type = info.content_type
+                url_info.content_length = info.content_length
+                url_info.content_disposition_filename = info.content_disposition_filename
+                if info.registrable_changed:
+                    signals.append(
+                        self._url_signal(
+                            Severity.MEDIUM,
+                            15,
+                            "signal.url.redirect_domain_change",
+                            "Redirect chain changes the registrable domain",
+                        )
+                    )
+                st.summary = f"{len(info.redirect_chain)} redirect(s)"
+
+            # Stage 8: download + full file analysis (§6), only on explicit consent
+            if request.allow_download and not cancel.is_set():
+                file_info_dl, file_signals, dl_auth = await self._download_and_scan(
+                    request, stages, unavailable, on_stage, cancel
+                )
+                signals += file_signals
+                had_authoritative = had_authoritative or dl_auth
+        else:
+            self._skip_named(
+                "url_reputation",
+                Availability.OFFLINE,
+                "network disabled",
+                stages,
+                unavailable,
+                on_stage,
+                title_key="stage.url_reputation",
+            )
+
+        verdict, risk, reason_key, reason_en = self._score(
+            signals, had_authoritative=had_authoritative, cancelled=cancel.is_set()
+        )
+        finished = datetime.now(UTC)
+        return ScanReport(
+            scan_id=scan_id,
+            app_version=_app_version(),
+            request=request,
+            started_at=started,
+            finished_at=finished,
+            duration_s=(finished - started).total_seconds(),
+            file=file_info_dl,
+            url=url_info,
+            signals=signals,
+            stages=stages,
+            verdict=verdict,
+            risk_score=risk,
+            verdict_reason_key=reason_key,
+            verdict_reason_en=reason_en,
+            incomplete=bool(unavailable) or cancel.is_set(),
+            unavailable_sources=unavailable,
+        )
+
+    async def _download_and_scan(
+        self,
+        request: ScanRequest,
+        stages: list[StageResult],
+        unavailable: list[str],
+        on_stage: OnStage | None,
+        cancel: asyncio.Event,
+    ) -> tuple[FileInfo | None, list[Signal], bool]:
+        """Stage 8: safely download the URL body and run the file pipeline over it."""
+        assert request.url is not None
+        signals: list[Signal] = []
+        with self._stage("download", "stage.download", stages, on_stage) as st:
+            try:
+                downloaded = await safe_download(
+                    request.url,
+                    self._paths.tmp_dir,
+                    max_bytes=request.max_download_bytes,
+                    timeout_s=request.timeout_s,
+                    cancel=cancel,
+                )
+            except Exception as exc:  # noqa: BLE001 - network/IO; report, don't crash
+                st.status = StageStatus.FAILED
+                st.error = str(exc)
+                unavailable.append("download")
+                return None, signals, False
+            st.summary = "download.bin"
+
+        workdir = downloaded.parent
+        try:
+            file_info = await self._collect_file_info(downloaded, stages, on_stage)
+            signals += self._identify_signals(file_info)
+            signals += signature_signals(file_info.signature) if file_info.signature else []
+            engine_signals, had_auth = await self._run_engines(
+                file_info, workdir, request, stages, unavailable, on_stage, cancel
+            )
+            signals += engine_signals
+            return file_info, signals, had_auth
+        finally:
+            shutil.rmtree(workdir, ignore_errors=True)
+
+    async def _run_url_providers(
+        self,
+        url: str,
+        stages: list[StageResult],
+        unavailable: list[str],
+        on_stage: OnStage | None,
+    ) -> tuple[list[Signal], bool]:
+        """Query URL-reputation providers concurrently (§7 stage 3)."""
+        providers = build_url_providers(self._limiter, allow_network=True)
+        runnable: list[Provider] = []
+        for provider in providers:
+            availability, detail = await provider.availability()
+            if availability is Availability.READY:
+                runnable.append(provider)
+            else:
+                self._skip_named(
+                    provider.name,
+                    availability,
+                    detail,
+                    stages,
+                    unavailable,
+                    on_stage,
+                    title_key="stage.url_reputation",
+                )
+
+        stage_by_name: dict[str, StageResult] = {}
+        for provider in runnable:
+            st = StageResult(
+                stage_id=provider.name,
+                title_key="stage.url_reputation",
+                status=StageStatus.RUNNING,
+                started_at=datetime.now(UTC),
+            )
+            stages.append(st)
+            stage_by_name[provider.name] = st
+            _notify(on_stage, st)
+
+        results = await asyncio.gather(
+            *(p.lookup_url(url) for p in runnable), return_exceptions=True
+        )
+        collected: list[Signal] = []
+        had_authoritative = False
+        for provider, outcome in zip(runnable, results, strict=True):
+            st = stage_by_name[provider.name]
+            st.finished_at = datetime.now(UTC)
+            if isinstance(outcome, BaseException):
+                st.status = StageStatus.FAILED
+                st.error = str(outcome)
+                unavailable.append(provider.name)
+            else:
+                st.status = StageStatus.DONE
+                st.summary = _summarise(outcome)
+                collected.extend(outcome)
+                had_authoritative = True  # a reputation source answered
+            _notify(on_stage, st)
+        return collected, had_authoritative
+
+    def _url_signal(self, severity: Severity, weight_value: int, key: str, title: str) -> Signal:
+        return Signal(
+            source="url",
+            kind=SourceKind.HEURISTIC,
+            severity=severity,
+            title_key=key,
+            title_en=title,
+            weight=weight_value,
+        )
 
     # ------------------------------------------------------------------ #
     # Scoring

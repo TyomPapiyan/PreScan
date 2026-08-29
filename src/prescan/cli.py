@@ -71,24 +71,32 @@ def scan(
     timeout: Annotated[float, typer.Option("--timeout", help="Overall timeout (s).")] = 300.0,
     quiet: Annotated[bool, typer.Option("--quiet", help="Only the verdict line.")] = False,
 ) -> None:
-    """Scan a file and report a verdict. Exit code encodes the verdict."""
-    path = Path(target)
-    if target.startswith(("http://", "https://")):
-        typer.secho("URL scanning arrives on M3.", fg=typer.colors.RED, err=True)
-        raise typer.Exit(_RUNTIME_ERROR)
-    if not path.is_file():
-        typer.secho(f"Not a file: {target}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(_RUNTIME_ERROR)
-
-    request = ScanRequest(
-        target_kind=TargetKind.FILE,
-        file_path=path,
-        allow_network=not no_network,
-        allow_cloud_upload=allow_upload,
-        allow_download=download,
-        force_refresh=refresh,
-        timeout_s=timeout,
-    )
+    """Scan a file or URL and report a verdict. Exit code encodes the verdict."""
+    is_url = target.startswith(("http://", "https://"))
+    if is_url:
+        request = ScanRequest(
+            target_kind=TargetKind.URL,
+            url=target,
+            allow_network=not no_network,
+            allow_cloud_upload=allow_upload,
+            allow_download=download,
+            force_refresh=refresh,
+            timeout_s=timeout,
+        )
+    else:
+        path = Path(target)
+        if not path.is_file():
+            typer.secho(f"Not a file: {target}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(_RUNTIME_ERROR)
+        request = ScanRequest(
+            target_kind=TargetKind.FILE,
+            file_path=path,
+            allow_network=not no_network,
+            allow_cloud_upload=allow_upload,
+            allow_download=download,
+            force_refresh=refresh,
+            timeout_s=timeout,
+        )
 
     try:
         report = asyncio.run(_run_scan(request))
@@ -191,6 +199,12 @@ def _print_human(report: ScanReport, *, quiet: bool) -> None:
     if report.file is not None:
         typer.echo(f"{report.file.name} · {report.file.size} bytes · {report.file.detected_type}")
         typer.echo(f"SHA-256: {report.file.sha256}")
+    if report.url is not None:
+        typer.echo(f"{report.url.normalized}")
+        if report.url.final_url and report.url.final_url != report.url.normalized:
+            typer.echo(f"final: {report.url.final_url}")
+        if report.url.registrable_domain:
+            typer.echo(f"domain: {report.url.registrable_domain}")
     typer.echo(report.verdict_reason_en)
 
     if report.signals:

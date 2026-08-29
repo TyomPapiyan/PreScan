@@ -16,6 +16,34 @@ _URL = f"https://www.virustotal.com/api/v3/files/{_SHA}"
 _CLEAN = {"data": {"attributes": {"last_analysis_stats": {"malicious": 0, "harmless": 70}}}}
 
 
+class _FakeClock:
+    """Deterministic virtual clock: sleeping advances it instantly."""
+
+    def __init__(self) -> None:
+        self.t = 0.0
+
+    def now(self) -> float:
+        return self.t
+
+    async def sleep(self, seconds: float) -> None:
+        self.t += seconds
+
+
+@pytest.mark.asyncio
+async def test_virustotal_pacing_is_deterministic() -> None:
+    """§12: six VirusTotal-rate calls must span >60s of *modelled* time.
+
+    Uses an injected fake clock, so it proves the pacing logic in milliseconds
+    of real time — no wall-clock sleeping. The 4/min bucket spaces calls 15s
+    apart, so 6 calls model 75s.
+    """
+    clock = _FakeClock()
+    bucket = TokenBucket(rate_per_minute=4, capacity=1, time_source=clock.now, sleep=clock.sleep)
+    for _ in range(6):
+        await bucket.acquire()
+    assert clock.t > 60, f"expected >60s of modelled pacing, got {clock.t:.1f}s"
+
+
 @pytest.mark.asyncio
 async def test_token_bucket_spaces_requests() -> None:
     # 600/min => one token every 0.1s, no burst.

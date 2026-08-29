@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from typing import ClassVar
 
 import structlog
@@ -13,6 +14,7 @@ from prescan.core.scoring import weight
 log = structlog.get_logger(__name__)
 
 _API = "https://www.virustotal.com/api/v3/files/{sha256}"
+_URL_API = "https://www.virustotal.com/api/v3/urls/{url_id}"
 _VT_CAP = 90  # §8.4: vt_malicious_per_hit multiplied by hits, capped at 90
 
 
@@ -57,6 +59,29 @@ class VirusTotalProvider(HttpProvider):
                 data={"malicious": 0, "total": total, "authoritative_clean": True},
             )
         ]
+
+    async def lookup_url(self, url: str) -> list[Signal]:
+        """VirusTotal URL reputation (§7 stage 3). Unknown URL -> no signal."""
+        url_id = base64.urlsafe_b64encode(url.encode("utf-8")).decode("ascii").rstrip("=")
+        response = await self._request(
+            "GET",
+            _URL_API.format(url_id=url_id),
+            headers={"x-apikey": self._api_key or ""},
+        )
+        if response is None:
+            return []
+        try:
+            stats = response.json()["data"]["attributes"]["last_analysis_stats"]
+            malicious = int(stats.get("malicious", 0))
+            total = sum(int(v) for v in stats.values())
+        except (ValueError, KeyError, TypeError) as exc:
+            log.warning("virustotal.url_parse_failed", error=str(exc))
+            return []
+        if malicious >= 4:
+            return [self._detection(malicious, total, decisive=True, severity=Severity.CRITICAL)]
+        if malicious >= 1:
+            return [self._detection(malicious, total, decisive=False, severity=Severity.MEDIUM)]
+        return []
 
     def _detection(
         self, malicious: int, total: int, *, decisive: bool, severity: Severity

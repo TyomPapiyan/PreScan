@@ -10,41 +10,56 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from typing import Final
 
 import structlog
 
 log = structlog.get_logger(__name__)
 
+TimeSource = Callable[[], float]
+Sleeper = Callable[[float], Awaitable[None]]
+
 
 class TokenBucket:
     """An async token bucket. ``acquire`` blocks until a token is available.
 
     The refill lock is held across the wait so concurrent callers are serialised
-    into a queue rather than all waking at once.
+    into a queue rather than all waking at once. The time source and sleeper are
+    injectable so tests can verify pacing deterministically with a fake clock,
+    without spending real wall-clock time.
     """
 
-    def __init__(self, rate_per_minute: float, capacity: float = 1.0) -> None:
+    def __init__(
+        self,
+        rate_per_minute: float,
+        capacity: float = 1.0,
+        *,
+        time_source: TimeSource | None = None,
+        sleep: Sleeper | None = None,
+    ) -> None:
         if rate_per_minute <= 0:
             raise ValueError("rate_per_minute must be positive")
         self._rate_per_sec = rate_per_minute / 60.0
         self._capacity = max(1.0, capacity)
         self._tokens = self._capacity
         self._lock = asyncio.Lock()
-        self._last = time.monotonic()
+        self._now: TimeSource = time_source or time.monotonic
+        self._sleep: Sleeper = sleep or asyncio.sleep
+        self._last = self._now()
 
     async def acquire(self) -> None:
         """Consume one token, waiting (queued) until one is available."""
         async with self._lock:
-            now = time.monotonic()
+            now = self._now()
             refill = (now - self._last) * self._rate_per_sec
             self._tokens = min(self._capacity, self._tokens + refill)
             self._last = now
             if self._tokens < 1.0:
                 wait = (1.0 - self._tokens) / self._rate_per_sec
-                await asyncio.sleep(wait)
+                await self._sleep(wait)
                 self._tokens = 0.0
-                self._last = time.monotonic()
+                self._last = self._now()
             else:
                 self._tokens -= 1.0
 

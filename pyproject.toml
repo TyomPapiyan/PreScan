@@ -134,6 +134,11 @@ select = [
 "PySide6".msg = "core/ must not depend on Qt. UI code belongs in ui/."
 "qasync".msg = "core/ must not depend on Qt."
 
+[tool.ruff.lint.per-file-ignores]
+# IDN-homograph tests deliberately embed a Cyrillic 'а' to exercise detection.
+"tests/unit/test_url_normalize.py" = ["RUF001", "RUF003"]
+"tests/unit/test_url_heuristics.py" = ["RUF001", "RUF003"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["prescan"]
 
@@ -175,9 +180,11 @@ minversion = "9.0"
 testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "strict"
-addopts = "-ra --strict-markers --strict-config"
+# Slow tests (real wall-clock pacing) are excluded by default to keep CI fast and
+# flake-free; run them explicitly with `pytest -m slow`.
+addopts = "-ra --strict-markers --strict-config -m 'not slow'"
 markers = [
-    "slow: test takes tens of seconds (e.g. real rate-limiter pacing); run in CI",
+    "slow: real wall-clock test (e.g. rate-limiter pacing); excluded by default, run with -m slow",
 ]
 
 [tool.coverage.run]

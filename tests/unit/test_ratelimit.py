@@ -46,13 +46,16 @@ async def test_virustotal_pacing_is_deterministic() -> None:
 
 @pytest.mark.asyncio
 async def test_token_bucket_spaces_requests() -> None:
-    # 600/min => one token every 0.1s, no burst.
-    bucket = TokenBucket(rate_per_minute=600, capacity=1)
-    start = time.monotonic()
+    # 600/min => one token every 0.1s, no burst. Deterministic fake clock so the
+    # assertion is exact and never flakes on a slow/low-resolution CI runner.
+    clock = _FakeClock()
+    bucket = TokenBucket(
+        rate_per_minute=600, capacity=1, time_source=clock.now, sleep=clock.sleep
+    )
     for _ in range(4):
         await bucket.acquire()
-    elapsed = time.monotonic() - start
-    assert elapsed >= 0.3  # 3 gaps of ~0.1s after the first immediate token
+    # First token is immediate, then 3 gaps of 0.1s.
+    assert clock.t == pytest.approx(0.3)
 
 
 def test_invalid_rate_rejected() -> None:

@@ -331,6 +331,7 @@ class Pipeline:
                 unavailable.append(engine.name)
             elif isinstance(outcome, BaseException):
                 st.status = StageStatus.FAILED
+                st.availability = Availability.ERROR
                 st.error = str(outcome)
                 unavailable.append(engine.name)
                 log.warning("engine.failed", engine=engine.name, error=str(outcome))
@@ -401,6 +402,7 @@ class Pipeline:
                 st.duration_s = (st.finished_at - st.started_at).total_seconds()
             if isinstance(outcome, BaseException):
                 st.status = StageStatus.FAILED
+                st.availability = Availability.ERROR  # runtime error, not a missing key
                 st.error = str(outcome)
                 unavailable.append(provider.name)
             else:
@@ -605,6 +607,7 @@ class Pipeline:
                 )
             except Exception as exc:  # noqa: BLE001 - network/IO; report, don't crash
                 st.status = StageStatus.FAILED
+                st.availability = Availability.ERROR
                 st.error = str(exc)
                 unavailable.append("download")
                 return None, signals, False
@@ -670,6 +673,7 @@ class Pipeline:
             st.finished_at = datetime.now(UTC)
             if isinstance(outcome, BaseException):
                 st.status = StageStatus.FAILED
+                st.availability = Availability.ERROR  # runtime error, not a missing key
                 st.error = str(outcome)
                 unavailable.append(provider.name)
             else:

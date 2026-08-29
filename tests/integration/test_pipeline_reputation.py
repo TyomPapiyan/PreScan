@@ -15,7 +15,7 @@ import respx
 
 import prescan.core.config as config_mod
 from prescan.core.config import AppConfig
-from prescan.core.models import ScanRequest, StageStatus, TargetKind, Verdict
+from prescan.core.models import Availability, ScanRequest, StageStatus, TargetKind, Verdict
 from prescan.core.pipeline import Pipeline
 
 _VT_MALICIOUS = {"data": {"attributes": {"last_analysis_stats": {"malicious": 10, "harmless": 60}}}}
@@ -77,3 +77,34 @@ async def test_no_key_providers_are_skipped_not_failed(
     assert all(s.availability.value == "no_key" for s in rep_stages)
     for name in ("virustotal", "metadefender", "malwarebazaar", "threatfox"):
         assert name in report.unavailable_sources
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_provider_error_is_error_availability_not_no_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A provider that errors at runtime (e.g. TLS failure) must report ERROR,
+    never NO_KEY — the key is present, so NO_KEY would mislead the user (M5 UI)."""
+    monkeypatch.setattr(config_mod, "get_api_key", lambda _pid: "dummy-key")
+
+    respx.route(method="GET", host="www.virustotal.com").mock(
+        side_effect=httpx.ConnectError("TLS handshake failed")
+    )
+    respx.route(method="GET", host="api.metadefender.com").mock(return_value=httpx.Response(404))
+    respx.route(method="POST", host="mb-api.abuse.ch").mock(
+        return_value=httpx.Response(200, json=_MB_NONE)
+    )
+    respx.route(method="POST", host="threatfox-api.abuse.ch").mock(
+        return_value=httpx.Response(200, json=_TF_NONE)
+    )
+
+    target = tmp_path / "sample.bin"
+    target.write_bytes(b"provider error path")
+    request = ScanRequest(target_kind=TargetKind.FILE, file_path=target, allow_network=True)
+    report = await Pipeline(AppConfig.load()).run(request)
+
+    vt = next(s for s in report.stages if s.stage_id == "virustotal")
+    assert vt.status is StageStatus.FAILED
+    assert vt.availability is Availability.ERROR
+    assert vt.availability is not Availability.NO_KEY

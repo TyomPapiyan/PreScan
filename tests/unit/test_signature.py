@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from prescan.core.models import SignatureInfo
 from prescan.core.signature import get_signature, signature_signals
 
+_ELF_BINARY = Path("/bin/ls")
 
+
+@pytest.mark.skipif(not _ELF_BINARY.exists(), reason="no /bin/ls on this OS")
 def test_elf_reports_absent_signature() -> None:
-    info = get_signature(Path("/bin/ls"))
+    info = get_signature(_ELF_BINARY)
     assert info.present is False
 
 

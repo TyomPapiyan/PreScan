@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from prescan.core.identify import identify
 
+_ELF_BINARY = Path("/bin/ls")
 
+
+@pytest.mark.skipif(not _ELF_BINARY.exists(), reason="no /bin/ls on this OS")
 def test_identify_elf_binary() -> None:
-    detected_type, _mime, mismatch = identify(Path("/bin/ls"))
+    detected_type, _mime, mismatch = identify(_ELF_BINARY)
     assert "ELF" in detected_type
     assert mismatch is False  # no declared extension to contradict
 

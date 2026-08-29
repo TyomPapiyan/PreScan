@@ -14,7 +14,7 @@ import asyncio
 import contextlib
 import struct
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
 import structlog
 
@@ -67,7 +67,15 @@ class ClamdClient:
         """Open a connection to clamd, raising ClamdUnavailableError on failure."""
         try:
             if self._socket:
-                return await asyncio.open_unix_connection(self._socket)
+                # open_unix_connection is Unix-only; resolve it dynamically so the
+                # module still type-checks on Windows (where clamd is reached by TCP).
+                open_unix = getattr(asyncio, "open_unix_connection", None)
+                if open_unix is None:
+                    raise ClamdUnavailableError("unix sockets are not supported on this OS")
+                return cast(
+                    "tuple[asyncio.StreamReader, asyncio.StreamWriter]",
+                    await open_unix(self._socket),
+                )
             assert self._host is not None
             return await asyncio.open_connection(self._host, self._port)
         except (TimeoutError, OSError) as exc:

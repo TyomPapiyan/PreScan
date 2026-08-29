@@ -44,6 +44,9 @@ _VERDICT_COLOR = {
 @app.callback()
 def main() -> None:
     """PreScan: check a file before you run it, and a link before you download it."""
+    from prescan.core.config import configure_logging
+
+    configure_logging()  # activates secret redaction in logs (§10.5)
 
 
 @app.command()
@@ -147,12 +150,34 @@ def update_rules() -> None:
 
 
 async def _run_scan(request: ScanRequest) -> ScanReport:
-    """Build a pipeline from config and run it."""
+    """Build a pipeline (with cache/history storage) from config and run it."""
+    from prescan.core.config import Paths
     from prescan.core.pipeline import Pipeline
+    from prescan.core.storage import Storage
 
     config = AppConfig.load()
-    pipeline = Pipeline(config)
-    return await pipeline.run(request)
+    paths = Paths.resolve()
+    paths.ensure()
+    storage = Storage(paths.db_path)
+    return await Pipeline(config, storage).run(request)
+
+
+@app.command()
+def history(
+    limit: Annotated[int, typer.Option("--limit", help="How many entries to show.")] = 20,
+) -> None:
+    """Show recent scans from the local history."""
+    from prescan.core.config import Paths
+    from prescan.core.storage import Storage
+
+    storage = Storage(Paths.resolve().db_path)
+    rows = storage.list_history(limit=limit)
+    if not rows:
+        typer.echo("No scans yet.")
+        return
+    for entry in rows:
+        stamp = entry.created_at.strftime("%Y-%m-%d %H:%M")
+        typer.echo(f"{stamp}  {entry.verdict:<10}  {entry.target}")
 
 
 def _print_human(report: ScanReport, *, quiet: bool) -> None:

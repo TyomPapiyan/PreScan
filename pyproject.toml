@@ -176,6 +176,9 @@ testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "strict"
 addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "slow: test takes tens of seconds (e.g. real rate-limiter pacing); run in CI",
+]
 
 [tool.coverage.run]
 source = ["prescan.core"]

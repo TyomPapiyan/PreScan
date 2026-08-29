@@ -41,8 +41,12 @@ from prescan.core.models import (
     TargetKind,
     Verdict,
 )
+from prescan.core.providers import build_hash_providers
+from prescan.core.providers.base import Provider
+from prescan.core.ratelimit import RateLimiter
 from prescan.core.scoring import score, weight
 from prescan.core.signature import get_signature, signature_signals
+from prescan.core.storage import Storage
 
 log = structlog.get_logger(__name__)
 
@@ -55,10 +59,11 @@ _AUTHORITATIVE = frozenset({"clamav", "defender"})
 class Pipeline:
     """Runs the full analysis pipeline for one request."""
 
-    def __init__(self, config: AppConfig, storage: object | None = None) -> None:
+    def __init__(self, config: AppConfig, storage: Storage | None = None) -> None:
         self._config = config
-        self._storage = storage  # SQLite cache/history arrives on M2
+        self._storage = storage
         self._paths = Paths.resolve()
+        self._limiter = RateLimiter()
 
     async def run(
         self,
@@ -86,6 +91,13 @@ class Pipeline:
 
         try:
             file_info = await self._collect_file_info(request.file_path, stages, on_stage)
+
+            # Stage 3: cache. A fresh hit short-circuits the pipeline (§6).
+            cached = await self._check_cache(file_info, request, stages, on_stage)
+            if cached is not None:
+                self._save_history(cached)
+                return cached
+
             signals += self._identify_signals(file_info)
             signals += signature_signals(file_info.signature) if file_info.signature else []
 
@@ -95,6 +107,14 @@ class Pipeline:
                     file_info, workdir, request, stages, unavailable, on_stage, cancel
                 )
                 signals += engine_signals
+
+                # Stage 11: reputation by hash (only the hash leaves, §6.2).
+                if request.allow_network and self._config.allow_network:
+                    rep_signals, rep_authoritative = await self._run_providers(
+                        file_info, request, stages, unavailable, on_stage, cancel
+                    )
+                    signals += rep_signals
+                    had_authoritative = had_authoritative or rep_authoritative
 
             verdict, risk, reason_key, reason_en = self._score(
                 signals, had_authoritative=had_authoritative, cancelled=cancel.is_set()
@@ -120,10 +140,54 @@ class Pipeline:
             incomplete=bool(unavailable) or cancel.is_set(),
             unavailable_sources=unavailable,
         )
+
+        # Persist a completed, non-cached scan to cache and history.
+        if not cancel.is_set():
+            await self._save_report(report)
         return report
 
     # ------------------------------------------------------------------ #
-    # Stages 1-4: identify, hash, cache, signature
+    # Stage 3: cache; persistence
+    # ------------------------------------------------------------------ #
+    async def _check_cache(
+        self,
+        file_info: FileInfo,
+        request: ScanRequest,
+        stages: list[StageResult],
+        on_stage: OnStage | None,
+    ) -> ScanReport | None:
+        """Return a fresh cached report (from_cache=True) or None, recording the stage."""
+        with self._stage("cache", "stage.cache", stages, on_stage) as st:
+            if self._storage is None or request.force_refresh:
+                st.status = StageStatus.SKIPPED
+                st.availability = Availability.DISABLED
+                st.summary = "cache bypassed" if request.force_refresh else "cache disabled"
+                return None
+            cached = await asyncio.to_thread(
+                self._storage.get_cached,
+                file_info.sha256,
+                ttl_days=self._config.cache_ttl_days,
+            )
+            if cached is None:
+                st.summary = "miss"
+                return None
+            st.summary = "hit"
+            return cached
+
+    async def _save_report(self, report: ScanReport) -> None:
+        """Store the report in the cache and history (best effort)."""
+        if self._storage is None:
+            return
+        await asyncio.to_thread(self._storage.put_cache, report)
+        await asyncio.to_thread(self._storage.add_history, report)
+
+    def _save_history(self, report: ScanReport) -> None:
+        """Record a cache-hit scan in history without re-caching it."""
+        if self._storage is not None:
+            self._storage.add_history(report)
+
+    # ------------------------------------------------------------------ #
+    # Stages 1-4: identify, hash, signature
     # ------------------------------------------------------------------ #
     async def _collect_file_info(
         self,
@@ -148,12 +212,6 @@ class Pipeline:
             imp = await asyncio.to_thread(_safe_imphash, resolved)
             fuzzy = await asyncio.to_thread(fuzzy_hash, resolved)
             st.summary = f"sha256:{digests['sha256'][:12]}"
-
-        # Stage 3: cache (SQLite lands on M2)
-        with self._stage("cache", "stage.cache", stages, on_stage) as st:
-            st.status = StageStatus.SKIPPED
-            st.availability = Availability.DISABLED
-            st.summary = "cache not enabled yet"
 
         # Stage 4: signature
         with self._stage("signature", "stage.signature", stages, on_stage) as st:
@@ -278,6 +336,99 @@ class Pipeline:
             _notify(on_stage, st)
 
         return collected, had_authoritative
+
+    # ------------------------------------------------------------------ #
+    # Stage 11: cloud reputation by hash (only the SHA-256 leaves, §6.2)
+    # ------------------------------------------------------------------ #
+    async def _run_providers(
+        self,
+        info: FileInfo,
+        request: ScanRequest,
+        stages: list[StageResult],
+        unavailable: list[str],
+        on_stage: OnStage | None,
+        cancel: asyncio.Event,
+    ) -> tuple[list[Signal], bool]:
+        """Query hash-reputation providers concurrently; collect signals in order."""
+        providers = build_hash_providers(
+            self._limiter, allow_network=request.allow_network and self._config.allow_network
+        )
+
+        runnable: list[Provider] = []
+        for provider in providers:
+            availability, detail = await provider.availability()
+            if availability is Availability.READY:
+                runnable.append(provider)
+            else:
+                self._skip_named(provider.name, availability, detail, stages, unavailable, on_stage)
+
+        stage_by_name: dict[str, StageResult] = {}
+        for provider in runnable:
+            st = StageResult(
+                stage_id=provider.name,
+                title_key="stage.reputation",
+                status=StageStatus.RUNNING,
+                started_at=datetime.now(UTC),
+            )
+            stages.append(st)
+            stage_by_name[provider.name] = st
+            _notify(on_stage, st)
+
+        async def run_one(provider: Provider) -> list[Signal]:
+            try:
+                return await provider.lookup_hash(info.sha256)
+            except Exception as exc:
+                log.warning("provider.failed", provider=provider.name, error=str(exc))
+                raise
+
+        results = await asyncio.gather(
+            *(run_one(provider) for provider in runnable), return_exceptions=True
+        )
+
+        collected: list[Signal] = []
+        had_authoritative = False
+        for provider, outcome in zip(runnable, results, strict=True):
+            st = stage_by_name[provider.name]
+            st.finished_at = datetime.now(UTC)
+            if st.started_at is not None:
+                st.duration_s = (st.finished_at - st.started_at).total_seconds()
+            if isinstance(outcome, BaseException):
+                st.status = StageStatus.FAILED
+                st.error = str(outcome)
+                unavailable.append(provider.name)
+            else:
+                st.status = StageStatus.DONE
+                st.summary = _summarise(outcome)
+                collected.extend(outcome)
+                if any(s.data.get("authoritative_clean") is True for s in outcome):
+                    had_authoritative = True
+            _notify(on_stage, st)
+
+        return collected, had_authoritative
+
+    def _skip_named(
+        self,
+        name: str,
+        availability: Availability,
+        detail: str,
+        stages: list[StageResult],
+        unavailable: list[str],
+        on_stage: OnStage | None,
+    ) -> None:
+        """Record a SKIPPED stage for an unavailable provider (NO_KEY, OFFLINE)."""
+        now = datetime.now(UTC)
+        st = StageResult(
+            stage_id=name,
+            title_key="stage.reputation",
+            status=StageStatus.SKIPPED,
+            availability=availability,
+            summary=detail,
+            started_at=now,
+            finished_at=now,
+        )
+        stages.append(st)
+        unavailable.append(name)
+        _notify(on_stage, st)
 
     # ------------------------------------------------------------------ #
     # Scoring

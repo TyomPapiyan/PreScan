@@ -99,8 +99,13 @@ def identify(path: Path) -> tuple[str, str, bool]:
     declared = path.suffix.lower()
     mismatch = False
 
-    # Content type contradicts the claimed final extension.
-    if declared and candidate_exts and declared not in candidate_exts:
+    # Executable/dangerous content hiding under a non-executable extension is the
+    # deception we care about (a PE named invoice.pdf). A benign mismatch (a text
+    # file with an odd extension) is NOT flagged, to avoid false positives (§8.6).
+    detected_is_executable = bool(candidate_exts & EXECUTABLE_EXTS) or _looks_executable(
+        detected_type
+    )
+    if detected_is_executable and declared and declared not in EXECUTABLE_EXTS:
         mismatch = True
 
     # Deceptive double extension regardless of content detection.
@@ -108,3 +113,12 @@ def identify(path: Path) -> tuple[str, str, bool]:
         mismatch = True
 
     return detected_type, detected_mime, mismatch
+
+
+def _looks_executable(detected_type: str) -> bool:
+    """Heuristic: does the content-detected type name denote executable code?"""
+    lowered = detected_type.lower()
+    return any(
+        token in lowered
+        for token in ("executable", "pe32", "elf", "mach-o", "ms-dos", "dll", "shared object")
+    )

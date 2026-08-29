@@ -54,6 +54,25 @@ async def test_defender_skipped_on_linux() -> None:
 
 
 @pytest.mark.asyncio
+async def test_second_scan_comes_from_cache(tmp_path: Path) -> None:
+    from prescan.core.storage import Storage
+
+    target = tmp_path / "blob.bin"
+    target.write_bytes(b"cache me" * 100)
+    storage = Storage(tmp_path / "db.sqlite")
+    pipeline = Pipeline(AppConfig.load(), storage)
+    request = ScanRequest(target_kind=TargetKind.FILE, file_path=target, allow_network=False)
+
+    first = await pipeline.run(request)
+    assert first.from_cache is False
+
+    second = await pipeline.run(request)
+    assert second.from_cache is True
+    assert second.file is not None
+    assert second.file.sha256 == first.file.sha256  # type: ignore[union-attr]
+
+
+@pytest.mark.asyncio
 async def test_cancelled_scan_is_unknown(tmp_path: Path) -> None:
     target = tmp_path / "blob.bin"
     target.write_bytes(b"x" * 4096)

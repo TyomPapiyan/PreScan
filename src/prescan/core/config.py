@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import sys
 import tomllib
+from collections.abc import MutableMapping
 from pathlib import Path
 from typing import Any, Final
 
@@ -24,6 +25,47 @@ from pydantic import BaseModel, ConfigDict, Field
 from prescan.core.errors import ConfigError
 
 log = structlog.get_logger(__name__)
+
+#: Log field names whose values must never be written out (§10.5).
+_SENSITIVE_FIELDS: Final = frozenset(
+    {
+        "api_key",
+        "apikey",
+        "key",
+        "auth",
+        "auth-key",
+        "auth_key",
+        "authorization",
+        "x-apikey",
+        "token",
+        "password",
+        "secret",
+    }
+)
+
+
+def redact_secrets(
+    _logger: object, _method: str, event_dict: MutableMapping[str, Any]
+) -> MutableMapping[str, Any]:
+    """structlog processor: replace secret field values with ``***`` (§10.5)."""
+    for field in list(event_dict):
+        if field.lower() in _SENSITIVE_FIELDS:
+            event_dict[field] = "***"
+    return event_dict
+
+
+def configure_logging() -> None:
+    """Configure structlog with secret redaction as a mandatory processor."""
+    structlog.configure(
+        processors=[
+            structlog.processors.add_log_level,
+            redact_secrets,
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.JSONRenderer(),
+        ],
+        cache_logger_on_first_use=True,
+    )
+
 
 _DIRS: Final = PlatformDirs(appname="PreScan", appauthor="PreScan")
 

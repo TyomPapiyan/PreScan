@@ -23,12 +23,20 @@ def test_deceptive_double_extension_flagged(tmp_path: Path) -> None:
     assert mismatch is True
 
 
-def test_content_contradicts_extension(tmp_path: Path) -> None:
-    # A PDF-claimed file whose content is a PNG signature.
-    target = tmp_path / "photo.pdf"
-    target.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 64)
+def test_executable_content_under_safe_extension_flagged(tmp_path: Path) -> None:
+    # A PDF-claimed file whose content is actually a PE/DOS executable.
+    target = tmp_path / "invoice.pdf"
+    target.write_bytes(b"MZ\x90\x00" + b"\x00" * 128)
     _type, _mime, mismatch = identify(target)
     assert mismatch is True
+
+
+def test_benign_extension_mismatch_not_flagged(tmp_path: Path) -> None:
+    # A text file with an odd extension is NOT a security mismatch (§8.6).
+    target = tmp_path / "notes.abc123"
+    target.write_bytes(b"just some plain text, nothing dangerous here\n")
+    _type, _mime, mismatch = identify(target)
+    assert mismatch is False
 
 
 def test_matching_extension_not_flagged(tmp_path: Path) -> None:

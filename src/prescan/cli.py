@@ -16,7 +16,7 @@ import typer
 
 from prescan import __version__
 from prescan.core.config import AppConfig
-from prescan.core.models import ScanReport, ScanRequest, TargetKind, Verdict
+from prescan.core.models import ScanReport, ScanRequest, StageStatus, TargetKind, Verdict
 
 app = typer.Typer(
     name="prescan",
@@ -57,7 +57,7 @@ def version() -> None:
 
 @app.command()
 def scan(
-    target: Annotated[str, typer.Argument(help="Path to a file (URL support: M3).")],
+    target: Annotated[str, typer.Argument(help="Path to a file, or an http(s) URL.")],
     json_out: Annotated[bool, typer.Option("--json", help="Machine-readable JSON.")] = False,
     html: Annotated[Path | None, typer.Option("--html", help="Write an HTML report.")] = None,
     no_network: Annotated[bool, typer.Option("--no-network", help="Layer 1 only.")] = False,
@@ -217,6 +217,10 @@ def _print_human(report: ScanReport, *, quiet: bool) -> None:
             f"\nIncomplete scan — unavailable: {', '.join(report.unavailable_sources)}",
             fg=typer.colors.YELLOW,
         )
+        # Surface *why* each source failed, so a broken provider is never silent.
+        failed = [s for s in report.stages if s.status is StageStatus.FAILED and s.error]
+        for stage in failed:
+            typer.secho(f"    {stage.stage_id}: {stage.error}", fg=typer.colors.YELLOW)
     typer.secho(
         "\nPreScan is not an antivirus and does not replace your system's protection.",
         fg=typer.colors.BRIGHT_BLACK,

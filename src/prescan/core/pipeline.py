@@ -558,7 +558,10 @@ class Pipeline:
             )
 
         verdict, risk, reason_key, reason_en = self._score(
-            signals, had_authoritative=had_authoritative, cancelled=cancel.is_set()
+            signals,
+            had_authoritative=had_authoritative,
+            cancelled=cancel.is_set(),
+            target_noun="URL",
         )
         finished = datetime.now(UTC)
         return ScanReport(
@@ -691,12 +694,22 @@ class Pipeline:
     # Scoring
     # ------------------------------------------------------------------ #
     def _score(
-        self, signals: list[Signal], *, had_authoritative: bool, cancelled: bool
+        self,
+        signals: list[Signal],
+        *,
+        had_authoritative: bool,
+        cancelled: bool,
+        target_noun: str = "file",
     ) -> tuple[Verdict, int, str, str]:
         """Run the scoring stage; a cancelled scan is always UNKNOWN."""
         if cancelled:
-            return (Verdict.UNKNOWN, 0, "verdict.cancelled", "Scan cancelled by the user")
-        return score(signals, had_authoritative_source=had_authoritative)
+            return (
+                Verdict.UNKNOWN,
+                0,
+                "verdict.cancelled",
+                f"{target_noun.capitalize()} scan cancelled by the user",
+            )
+        return score(signals, had_authoritative_source=had_authoritative, target_noun=target_noun)
 
     # ------------------------------------------------------------------ #
     # Stage helpers

@@ -71,9 +71,16 @@ def _has_valid_trusted_signature(signals: list[Signal]) -> bool:
 
 
 def score(
-    signals: list[Signal], *, had_authoritative_source: bool
+    signals: list[Signal],
+    *,
+    had_authoritative_source: bool,
+    target_noun: str = "file",
 ) -> tuple[Verdict, int, str, str]:
-    """Return (verdict, risk_score, reason_key, reason_en). Pure function, no I/O."""
+    """Return (verdict, risk_score, reason_key, reason_en). Pure function, no I/O.
+
+    ``target_noun`` ("file" or "URL") is interpolated into the human reason so
+    URL scans read naturally; the reason_key stays target-neutral for i18n (M5).
+    """
     raw = sum(s.weight for s in signals)
     base_score = max(0, min(100, raw))
 
@@ -118,7 +125,12 @@ def score(
 
     if had_authoritative_source and no_low_or_worse and ml_ok:
         risk = min(_SAFE_CEIL, base_score)
-        return (Verdict.SAFE, risk, "verdict.safe", "No authoritative source flagged this file")
+        return (
+            Verdict.SAFE,
+            risk,
+            "verdict.safe",
+            f"No authoritative source flagged this {target_noun}",
+        )
 
     # UNKNOWN: numeric gauge is hidden in the UI; keep a real number in the report.
     risk = max(0, min(_SUSPICIOUS_MIN - 1, base_score))
@@ -126,7 +138,7 @@ def score(
         Verdict.UNKNOWN,
         risk,
         "verdict.unknown",
-        "Not enough authoritative signal to clear or condemn this file",
+        f"Not enough authoritative signal to clear or condemn this {target_noun}",
     )
 
 

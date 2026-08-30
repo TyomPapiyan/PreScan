@@ -25,6 +25,24 @@ Item {
                 + "RinUI (MIT) is vendored in ui/vendor/RinUI. Full licenses are in the "
                 + "licenses/ folder. ClamAV is used as an external process, not linked.")
         }
+        // LGPLv3 §11.2: link to the corresponding PySide6/Qt sources.
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: theme.subtext
+            textFormat: Text.StyledText
+            onLinkActivated: (link) => Qt.openUrlExternally(link)
+            text: qsTr("PySide6 / Qt are used under the LGPLv3. Corresponding source: ")
+                + '<a href="https://download.qt.io/official_releases/QtForPython/">'
+                + "https://download.qt.io/official_releases/QtForPython/</a>"
+        }
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: theme.subtext
+            text: qsTr("Google Safe Browsing and the VirusTotal public API are free for "
+                + "non-commercial use only.")
+        }
         Label {
             text: "https://github.com/TyomPapiyan/PreScan"
             color: theme.accent

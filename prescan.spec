@@ -1,10 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller spec for PreScan.
+"""PyInstaller spec for PreScan (GUI).
 
-Placeholder for M0. The real --onedir build is defined on M7 (spec §11, §12).
---onefile is forbidden: Qt shared libraries must remain separate files so the
-user can replace them (LGPLv3 §4d).
+The bundled application launches the GUI: the entry script is the package
+``__main__`` (which calls ``prescan.ui.app.run``), matching ``python -m prescan``.
+The CLI stays available as the separate ``prescan`` console script.
+
+Filled out fully on M7 (--onedir; bundle ui/vendor/RinUI, resources/, qml/,
+i18n .qm and the licenses/ folder). --onefile is forbidden (§11.3).
 """
 
-# TODO(M7): Analysis / PYZ / EXE / COLLECT for a --onedir build, bundling
-# ui/vendor/RinUI, resources/, qml/, i18n .qm catalogs and the licenses/ folder.
+# GUI entry point for the bundle.
+ENTRY_SCRIPT = "src/prescan/__main__.py"
+
+# TODO(M7): Analysis(ENTRY_SCRIPT, ...) / PYZ / EXE(console=False) / COLLECT
+# for a --onedir build, datas for qml/i18n/resources/vendor/licenses.

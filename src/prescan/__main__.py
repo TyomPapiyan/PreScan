@@ -1,18 +1,18 @@
-"""``python -m prescan`` entry point.
+"""``python -m prescan`` entry point → the GUI (spec §4).
 
-On M5 this will launch the GUI (``prescan.ui.app``). Until the UI layer exists
-it defers to the CLI, so the module stays runnable without Qt installed (§10.1).
+The console script ``prescan`` (pyproject [project.scripts]) is the CLI; the
+module entry point launches the graphical app.
 """
 
 from __future__ import annotations
 
-from prescan.cli import app
 
+def main() -> int:
+    """Launch the PreScan GUI."""
+    from prescan.ui.app import run
 
-def main() -> None:
-    """Run PreScan. Delegates to the CLI until the GUI lands on M5."""
-    app()
+    return run()
 
 
 if __name__ == "__main__":  # pragma: no cover
-    main()
+    raise SystemExit(main())

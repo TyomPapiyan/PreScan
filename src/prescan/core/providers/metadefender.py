@@ -68,7 +68,7 @@ class MetaDefenderProvider(HttpProvider):
                     title_en=f"MetaDefender: {malicious}/{total} engines flagged this file",
                     detail=f"{malicious}/{total}",
                     weight=min(_CAP, per_hit * malicious),
-                    data={"malicious": malicious, "total": total},
+                    data={"malicious": malicious, "total": total, "escalates": True},
                 )
             ]
         return [

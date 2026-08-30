@@ -89,7 +89,7 @@ class DocumentsEngine:
                     title_key="signal.doc.vba_macro",
                     title_en="Document contains VBA macros",
                     weight=weight("documents", "vba_macro", 30),
-                    data={"vba": True},
+                    data={"vba": True, "escalates": True},
                 )
             )
             keywords: list[str] = []
@@ -107,6 +107,7 @@ class DocumentsEngine:
                         detail=", ".join(sorted(lowered & _AUTOEXEC_KEYWORDS)),
                         weight=weight("documents", "vba_autoexec", 45),
                         mitre=["T1059.005"],
+                        data={"escalates": True},
                     )
                 )
             obfuscation_markers = ("hex", "base64", "obfus")
@@ -120,6 +121,7 @@ class DocumentsEngine:
                         title_en="Macro shows obfuscation",
                         weight=weight("documents", "vba_obfuscated", 40),
                         mitre=["T1027"],
+                        data={"escalates": True},
                     )
                 )
         finally:
@@ -152,6 +154,7 @@ class DocumentsEngine:
                         title_key="signal.pdf.openaction",
                         title_en="PDF defines an automatic action (/OpenAction)",
                         weight=weight("documents", "pdf_openaction", 35),
+                        data={"escalates": True},
                     )
                 )
             if "/JavaScript" in name_keys or "/JavaScript" in root_keys:
@@ -164,6 +167,7 @@ class DocumentsEngine:
                         title_en="PDF contains JavaScript",
                         weight=weight("documents", "pdf_javascript", 35),
                         mitre=["T1204.002"],
+                        data={"escalates": True},
                     )
                 )
             if "/EmbeddedFiles" in name_keys:
@@ -175,6 +179,7 @@ class DocumentsEngine:
                         title_key="signal.pdf.embedded",
                         title_en="PDF has embedded files",
                         weight=weight("documents", "pdf_embedded_exe", 60),
+                        data={"escalates": True},
                     )
                 )
         return signals
@@ -197,6 +202,7 @@ class DocumentsEngine:
                     title_en="Archive tripped the decompression-bomb guard",
                     detail=str(exc),
                     weight=weight("archive", "bomb_guard_triggered", 50),
+                    data={"escalates": True},
                 )
             )
         except ArchiveError as exc:
@@ -224,6 +230,7 @@ class DocumentsEngine:
                     title_key="signal.archive.password_exe",
                     title_en="Password-protected archive contains an executable",
                     weight=weight("archive", "password_protected_with_exe", 35),
+                    data={"escalates": True},
                 )
             ]
         return []

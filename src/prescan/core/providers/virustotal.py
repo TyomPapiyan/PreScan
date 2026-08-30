@@ -94,5 +94,6 @@ class VirusTotalProvider(HttpProvider):
             detail=f"{malicious}/{total}",
             weight=min(_VT_CAP, per_hit * malicious),
             decisive=decisive,
-            data={"malicious": malicious, "total": total},
+            # §8.2: 1..3 detections escalate to SUSPICIOUS (>=4 is decisive above).
+            data={"malicious": malicious, "total": total, "escalates": not decisive},
         )

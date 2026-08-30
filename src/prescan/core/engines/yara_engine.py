@@ -110,7 +110,11 @@ class YaraEngine:
             return self._signal(rule, level, weight("local_engine", key), decisive=True, meta=meta)
         if severity_meta == "medium" or (score_meta is not None and 40 <= score_meta <= 74):
             return self._signal(
-                rule, Severity.MEDIUM, weight("local_engine", "yara_medium"), meta=meta
+                rule,
+                Severity.MEDIUM,
+                weight("local_engine", "yara_medium"),
+                escalates=True,
+                meta=meta,
             )
         return self._signal(rule, Severity.LOW, weight("local_engine", "yara_low"), meta=meta)
 
@@ -121,6 +125,7 @@ class YaraEngine:
         rule_weight: int,
         *,
         decisive: bool = False,
+        escalates: bool = False,
         meta: dict[str, Any],
     ) -> Signal:
         return Signal(
@@ -132,7 +137,12 @@ class YaraEngine:
             detail=rule.identifier,
             weight=rule_weight,
             decisive=decisive,
-            data={"rule": rule.identifier, "namespace": rule.namespace, "meta": meta},
+            data={
+                "rule": rule.identifier,
+                "namespace": rule.namespace,
+                "meta": meta,
+                "escalates": escalates,
+            },
         )
 
 

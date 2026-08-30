@@ -254,7 +254,11 @@ class Pipeline:
                 title_en="File type does not match its extension",
                 detail=f"{info.declared_extension} vs {info.detected_type}",
                 weight=weight("static", "extension_mismatch", 40),
-                data={"declared": info.declared_extension, "detected": info.detected_type},
+                data={
+                    "declared": info.declared_extension,
+                    "detected": info.detected_type,
+                    "escalates": True,
+                },
             )
         ]
 
@@ -685,6 +689,8 @@ class Pipeline:
         return collected, had_authoritative
 
     def _url_signal(self, severity: Severity, weight_value: int, key: str, title: str) -> Signal:
+        # These are §8.2 rows (young domain, redirect domain change, invalid TLS):
+        # each escalates the verdict to SUSPICIOUS.
         return Signal(
             source="url",
             kind=SourceKind.HEURISTIC,
@@ -692,6 +698,7 @@ class Pipeline:
             title_key=key,
             title_en=title,
             weight=weight_value,
+            data={"escalates": True},
         )
 
     # ------------------------------------------------------------------ #

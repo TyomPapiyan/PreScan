@@ -65,6 +65,10 @@ _KIND: Final = SourceKind.HEURISTIC
 def _sig(
     severity: Severity, weight: int, key: str, title: str, detail: str = "", **data: object
 ) -> Signal:
+    # §8.2: only HIGH/CRITICAL §7.1 heuristics escalate the verdict; MEDIUM/LOW
+    # ones contribute weight only.
+    payload = dict(data)
+    payload["escalates"] = severity in (Severity.HIGH, Severity.CRITICAL)
     return Signal(
         source=_SOURCE,
         kind=_KIND,
@@ -73,7 +77,7 @@ def _sig(
         title_en=title,
         detail=detail,
         weight=weight,
-        data=dict(data),
+        data=payload,
     )
 
 

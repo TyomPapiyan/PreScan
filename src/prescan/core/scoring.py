@@ -5,7 +5,8 @@ is no meta-model: only explicit rules plus a weighted sum for the visible gauge.
 
 Rule layers:
   §8.1 hard DANGEROUS rules  -> any ``decisive`` signal wins, floor 80.
-  §8.2 SUSPICIOUS rules      -> any ``escalates`` (>= MEDIUM) signal, clamped 40-79.
+  §8.2 SUSPICIOUS rules      -> any signal with data["escalates"], or ML >= 0.70,
+                                clamped 40-79.
   §8.3 SAFE / UNKNOWN        -> SAFE only with an authoritative clean source,
                                 otherwise UNKNOWN (honest over a green tick).
   §8.6 false-positive guard  -> a valid trusted signature blocks packing-only
@@ -98,28 +99,33 @@ def score(
 
     # ---- §8.6 false-positive guard -------------------------------------- #
     trusted = _has_valid_trusted_signature(signals)
+    ml_prob = _ml_probability(signals)
 
     # ---- §8.2 SUSPICIOUS rules ------------------------------------------ #
-    # Any signal that explicitly escalates, or reaches MEDIUM+ severity. A
-    # packing-only (entropy) escalation is suppressed by a trusted signature.
+    # A signal escalates only if it declares data["escalates"] (a §8.2 row set by
+    # its producer). A packing-only (entropy) escalation is suppressed by a valid
+    # trusted signature (§8.6). ML >= 0.70 escalates but never on its own reaches
+    # DANGEROUS (§8.6): it is only ever a SUSPICIOUS trigger here.
     escalating = [
         s
         for s in signals
-        if _SEVERITY_ORDER[s.severity] >= _SEVERITY_ORDER[Severity.MEDIUM]
-        and not (trusted and s.data.get("packing_only") is True)
+        if s.data.get("escalates") is True and not (trusted and s.data.get("packing_only") is True)
     ]
-    if escalating:
+    ml_escalates = ml_prob is not None and ml_prob >= 0.70
+    if escalating or ml_escalates:
         risk = max(_SUSPICIOUS_MIN, min(_SUSPICIOUS_MAX, base_score))
-        top = max(escalating, key=lambda s: _SEVERITY_ORDER[s.severity])
+        reason = escalating[0].title_en if escalating else "ML flagged this as likely malicious"
+        if escalating:
+            top = max(escalating, key=lambda s: _SEVERITY_ORDER[s.severity])
+            reason = top.title_en
         return (
             Verdict.SUSPICIOUS,
             risk,
             "verdict.suspicious",
-            f"Attention required: {top.title_en}",
+            f"Attention required: {reason}",
         )
 
     # ---- §8.3 SAFE / UNKNOWN -------------------------------------------- #
-    ml_prob = _ml_probability(signals)
     ml_ok = (ml_prob is not None and ml_prob < 0.20) or (ml_prob is None and trusted)
     no_low_or_worse = _max_severity(signals) < _SEVERITY_ORDER[Severity.LOW]
 

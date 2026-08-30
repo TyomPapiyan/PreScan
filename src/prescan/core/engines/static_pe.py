@@ -94,7 +94,12 @@ class StaticPEEngine:
                     title_en=f"High-entropy section {peak_name} ({peak:.2f})",
                     detail=f"{peak_name}: {peak:.2f}",
                     weight=weight("static", "high_entropy_unsigned", 30),
-                    data={"section": peak_name, "entropy": peak, "packing_only": True},
+                    data={
+                        "section": peak_name,
+                        "entropy": peak,
+                        "packing_only": True,
+                        "escalates": True,
+                    },
                 )
             ]
         return []

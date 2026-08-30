@@ -157,6 +157,50 @@ def update_rules() -> None:
     typer.secho(f"Installed {count} YARA rule file(s).", fg=typer.colors.GREEN)
 
 
+quarantine_app = typer.Typer(help="Manage the quarantine store.", no_args_is_help=True)
+app.add_typer(quarantine_app, name="quarantine")
+
+
+@quarantine_app.command("list")
+def quarantine_list() -> None:
+    """List quarantined files."""
+    from prescan.core.quarantine import list_entries
+
+    entries = list_entries()
+    if not entries:
+        typer.echo("Quarantine is empty.")
+        return
+    for entry in entries:
+        typer.echo(f"{entry.entry_id[:16]}  {entry.verdict:<10}  {entry.original_name}")
+
+
+@quarantine_app.command("restore")
+def quarantine_restore(
+    entry_id: Annotated[str, typer.Argument(help="Quarantine entry id (SHA-256).")],
+    dest: Annotated[Path, typer.Argument(help="Destination directory or file.")],
+) -> None:
+    """Restore a quarantined file to a destination."""
+    from prescan.core.quarantine import QuarantineError, restore
+
+    try:
+        out = restore(entry_id, dest)
+    except QuarantineError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(_RUNTIME_ERROR) from exc
+    typer.secho(f"Restored to {out}", fg=typer.colors.GREEN)
+
+
+@quarantine_app.command("purge")
+def quarantine_purge(
+    entry_id: Annotated[str, typer.Argument(help="Quarantine entry id (SHA-256).")],
+) -> None:
+    """Permanently delete a quarantined file."""
+    from prescan.core.quarantine import purge
+
+    purge(entry_id)
+    typer.secho("Purged.", fg=typer.colors.GREEN)
+
+
 @app.command(name="update-clamav")
 def update_clamav() -> None:
     """Refresh ClamAV signatures (freshclam) and ask clamd to reload them."""

@@ -67,8 +67,6 @@ async def test_clamav_update_reports_reload(monkeypatch: pytest.MonkeyPatch) -> 
     from prescan.core.config import AppConfig
 
     monkeypatch.setattr(updater.shutil, "which", lambda _name: None)
-    result = await updater.update_clamav_databases(
-        AppConfig(), client=_FakeClient("RELOADING")
-    )
+    result = await updater.update_clamav_databases(AppConfig(), client=_FakeClient("RELOADING"))
     assert result.reloaded is True
     assert "reloaded" in result.message

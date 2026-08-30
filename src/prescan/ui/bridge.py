@@ -246,16 +246,17 @@ class Bridge(QObject):
         coroutine un-awaited.
         """
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
         except RuntimeError:
-            coro.close()
-            return
-        if loop.is_running():
-            task = loop.create_task(coro)
-            self._tasks.add(task)
-            task.add_done_callback(self._tasks.discard)
-        else:
             coro.close()  # no running loop yet; caller re-invokes when it starts
+            return
+        task = loop.create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    def current_language(self) -> str:
+        """Plain (non-Qt) accessor for the language code, for the app wiring."""
+        return self._language
 
     async def _refresh_engines(self) -> None:
         from prescan.core.engines import build_engines

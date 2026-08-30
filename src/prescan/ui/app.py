@@ -26,7 +26,30 @@ if TYPE_CHECKING:
 
 _UI_DIR = Path(__file__).resolve().parent
 _QML_DIR = _UI_DIR / "qml"
+_I18N_DIR = _UI_DIR / "i18n"
 _STYLE = "FluentWinUI3"
+
+_translator: object | None = None
+
+
+def apply_language(engine: QQmlApplicationEngine, code: str) -> None:
+    """Install/remove the QTranslator for ``code`` and retranslate live (§9.8)."""
+    from PySide6.QtCore import QCoreApplication, QTranslator
+
+    global _translator
+    app = QCoreApplication.instance()
+    if app is None:  # pragma: no cover - app always exists when UI runs
+        return
+    if _translator is not None:
+        app.removeTranslator(_translator)  # type: ignore[arg-type]
+        _translator = None
+    qm = _I18N_DIR / f"prescan_{code}.qm"
+    if code not in ("en", "system") and qm.exists():
+        translator = QTranslator()
+        if translator.load(str(qm)):
+            app.installTranslator(translator)
+            _translator = translator
+    engine.retranslate()
 
 
 def configure_style() -> None:
@@ -55,6 +78,10 @@ def build_engine() -> tuple[QQmlApplicationEngine, Bridge]:
     engine = QQmlApplicationEngine()
     engine.addImportPath(str(_QML_DIR))
     engine.load(str(_QML_DIR / "Main.qml"))
+
+    # Live language switching (§9.8): re-install the translator and retranslate.
+    bridge.languageChanged.connect(lambda: apply_language(engine, bridge.current_language()))
+    apply_language(engine, bridge.current_language())
     return engine, bridge
 
 

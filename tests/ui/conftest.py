@@ -19,6 +19,26 @@ from typing import Any
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 collect_ignore_glob: list[str] = []
+
+
+def _compile_translations() -> None:
+    """Compile .ts -> .qm (a build artifact, git-ignored) so RU tests can load it."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    lrelease = shutil.which("pyside6-lrelease")
+    if lrelease is None:  # pragma: no cover - PySide6 always ships it
+        return
+    i18n = Path(__file__).resolve().parents[2] / "src" / "prescan" / "ui" / "i18n"
+    for ts in i18n.glob("*.ts"):
+        subprocess.run(
+            [lrelease, str(ts), "-qm", str(ts.with_suffix(".qm"))],
+            check=False,
+            capture_output=True,
+        )
+
+
 if find_spec("PySide6") is None:  # pragma: no cover - core-only checkout
     collect_ignore_glob = ["*.py"]
 else:
@@ -35,6 +55,7 @@ else:
         def handler(mode: QtMsgType, _ctx: object, message: str) -> None:
             messages.append((int(mode), message))
 
+        _compile_translations()
         qInstallMessageHandler(handler)
         app = QGuiApplication.instance() or QGuiApplication([])
 

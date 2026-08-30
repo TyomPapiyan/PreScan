@@ -88,6 +88,19 @@ def test_availability_text_differs_by_reason(gui: Any, availability: str, expect
     assert expect.lower() in text.lower()
 
 
+def test_language_switch_translates_without_restart(gui: Any) -> None:
+    """Switching to RU installs the translator and retranslate yields Russian (§9.8)."""
+    from PySide6.QtCore import QCoreApplication
+
+    gui.bridge.setLanguage("ru")
+    try:
+        assert QCoreApplication.translate("ScanPage", "Cancel") == "Отмена"
+        assert QCoreApplication.translate("SettingsPage", "Privacy") == "Приватность"
+    finally:
+        gui.bridge.setLanguage("en")
+    assert QCoreApplication.translate("ScanPage", "Cancel") == "Cancel"
+
+
 def test_privacy_lists_full_url_sources(gui: Any) -> None:
     """The Privacy disclosure names the sources that receive the full URL (§6.2)."""
     sources = gui.bridge.fullUrlSources()

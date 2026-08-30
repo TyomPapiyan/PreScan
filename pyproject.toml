@@ -144,7 +144,7 @@ select = [
 # by tests/unit/test_core_has_no_qt.py).
 "src/prescan/ui/**" = ["N802", "N815", "N803", "TID251"]
 # UI tests exercise the Qt layer and legitimately import PySide6.
-"tests/ui/**" = ["TID251"]
+"tests/ui/**" = ["TID251", "RUF001"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["prescan"]

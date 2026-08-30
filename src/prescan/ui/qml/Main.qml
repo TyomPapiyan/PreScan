@@ -88,7 +88,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             currentIndex: appWindow.page
 
-            ScanPage { theme: appWindow.th; win: appWindow }
+            ScanPage { objectName: "scanPage"; theme: appWindow.th; win: appWindow }
             HistoryPage { theme: appWindow.th }
             QuarantinePage { theme: appWindow.th }
             SettingsPage { theme: appWindow.th; win: appWindow }

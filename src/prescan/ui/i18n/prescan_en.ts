@@ -18,12 +18,47 @@
         <source>Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) is vendored in ui/vendor/RinUI. Full licenses are in the licenses/ folder. ClamAV is used as an external process, not linked.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../qml/pages/AboutPage.qml" line="35"/>
+        <source>PySide6 / Qt are used under the LGPLv3. Corresponding source: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/AboutPage.qml" line="43"/>
+        <source>Google Safe Browsing and the VirusTotal public API are free for non-commercial use only.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>HistoryPage</name>
     <message>
-        <location filename="../qml/pages/HistoryPage.qml" line="12"/>
+        <location filename="../qml/pages/HistoryPage.qml" line="25"/>
         <source>History</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HistoryPage.qml" line="28"/>
+        <source>Clear history</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HistoryPage.qml" line="36"/>
+        <source>Verdict:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HistoryPage.qml" line="45"/>
+        <source>Search by name or SHA-256…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HistoryPage.qml" line="88"/>
+        <source>Clear history?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HistoryPage.qml" line="91"/>
+        <source>This permanently deletes all scan history entries.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -63,13 +98,53 @@
 <context>
     <name>QuarantinePage</name>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="12"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="14"/>
+        <source>Restore to folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="22"/>
+        <source>Restore this file?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="28"/>
+        <source>Warning: this file was quarantined as dangerous. Restoring it puts the original malware back on disk. Continue only if you are sure.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="37"/>
+        <source>Delete permanently?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="40"/>
+        <source>This permanently deletes the quarantined file.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="47"/>
         <source>Quarantine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="15"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="50"/>
         <source>Quarantine is empty.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="77"/>
+        <source>Restore</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="81"/>
+        <source>Re-scan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/QuarantinePage.qml" line="85"/>
+        <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -81,85 +156,81 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="35"/>
-        <source>PreScan</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/pages/ScanPage.qml" line="58"/>
+        <location filename="../qml/pages/ScanPage.qml" line="52"/>
         <source>File</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="59"/>
+        <location filename="../qml/pages/ScanPage.qml" line="53"/>
         <source>Link</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="80"/>
-        <source>Drop a file here
-or use the button below
+        <location filename="../qml/pages/ScanPage.qml" line="105"/>
+        <source>⬇
+
+Drop a file here, or use the button below
 
 exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="93"/>
+        <location filename="../qml/pages/ScanPage.qml" line="112"/>
         <source>Choose a file from the computer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="99"/>
+        <location filename="../qml/pages/ScanPage.qml" line="118"/>
         <source>No size limit · local analysis</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="111"/>
+        <location filename="../qml/pages/ScanPage.qml" line="126"/>
         <source>Download and scan the file (into a temp folder)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="112"/>
+        <location filename="../qml/pages/ScanPage.qml" line="127"/>
         <source>Follow the redirect chain</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="114"/>
+        <location filename="../qml/pages/ScanPage.qml" line="130"/>
         <source>Scan the link</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="134"/>
+        <location filename="../qml/pages/ScanPage.qml" line="149"/>
         <source>Analysing…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="139"/>
+        <location filename="../qml/pages/ScanPage.qml" line="152"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="168"/>
+        <location filename="../qml/pages/ScanPage.qml" line="177"/>
         <source>Incomplete scan — some sources were unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="172"/>
+        <location filename="../qml/pages/ScanPage.qml" line="180"/>
         <source>WHY THIS VERDICT</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="184"/>
+        <location filename="../qml/pages/ScanPage.qml" line="188"/>
         <source>Save report…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="186"/>
+        <location filename="../qml/pages/ScanPage.qml" line="189"/>
         <source>Quarantine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="188"/>
+        <location filename="../qml/pages/ScanPage.qml" line="191"/>
         <source>New scan</source>
         <translation type="unfinished"></translation>
     </message>
@@ -167,67 +238,122 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="25"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="30"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="30"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="35"/>
         <source>Local engines</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="35"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="40"/>
         <source>Update YARA rules</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="36"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="41"/>
         <source>Update ClamAV databases</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="37"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="42"/>
         <source>Re-check</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="45"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="50"/>
+        <source>API keys</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="70"/>
+        <source>key configured — enter to replace</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="71"/>
+        <source>paste API key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="74"/>
+        <source>Save</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="79"/>
+        <source>Check key</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="96"/>
         <source>Privacy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="53"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="104"/>
         <source>When you scan a link, the FULL URL is sent to these sources:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="63"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="117"/>
         <source>Google Safe Browsing receives only truncated hash prefixes — never the full URL.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="65"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="120"/>
         <source>Never upload files to the cloud</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="66"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="125"/>
         <source>Send only hashes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="73"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="130"/>
+        <source>Disable all network activity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="140"/>
+        <source>Scanning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="145"/>
+        <source>Download size limit (MB):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="150"/>
+        <source>Scan timeout (s):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="155"/>
+        <source>Archive extraction depth:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="160"/>
+        <source>Cache TTL (days):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="171"/>
         <source>Interface</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="77"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="175"/>
         <source>Theme:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="85"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="183"/>
         <source>Language:</source>
         <translation type="unfinished"></translation>
     </message>

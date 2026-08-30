@@ -1,11 +1,85 @@
-{# PreScan HTML report template. Populated on M4 (core/report.py). #}
+{# PreScan HTML report (§9.6, exported by core/report.py). Self-contained. #}
 <!doctype html>
-<html lang="{{ lang | default('en') }}">
+<html lang="{{ lang }}">
   <head>
     <meta charset="utf-8" />
-    <title>PreScan report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PreScan report — {{ target_name }}</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: "Segoe UI", Inter, system-ui, sans-serif; margin: 2rem auto;
+             max-width: 52rem; padding: 0 1rem; line-height: 1.5; }
+      .verdict { font-size: 1.6rem; font-weight: 700; }
+      .safe { color: #1e9e57; } .suspicious { color: #c77700; }
+      .dangerous { color: #c62a2e; } .unknown { color: #6e6e78; }
+      .gauge { font-variant-numeric: tabular-nums; }
+      .meta { color: #6e6e78; font-size: .9rem; word-break: break-all; }
+      .card { border: 1px solid #d9d9e0; border-radius: 12px; padding: .75rem 1rem;
+              margin: .5rem 0; }
+      .sev { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em;
+             color: #6e6e78; }
+      .warn { border-left: 4px solid #c77700; padding-left: .75rem; }
+      footer { margin-top: 2rem; color: #6e6e78; font-size: .8rem; }
+      table { border-collapse: collapse; width: 100%; }
+      td { padding: .15rem .5rem .15rem 0; vertical-align: top; }
+    </style>
   </head>
   <body>
-    {# TODO(M4): verdict, signal cards, file/URL info, disclaimer footer. #}
+    <h1>PreScan report</h1>
+    <p class="verdict {{ report.verdict.value }}">
+      {{ report.verdict.value | upper }}
+      <span class="gauge">{{ gauge }}</span>
+    </p>
+    <p>{{ report.verdict_reason_en }}</p>
+
+    {% if report.incomplete %}
+      <p class="warn">Incomplete scan — unavailable sources:
+        {{ report.unavailable_sources | join(", ") }}.</p>
+    {% endif %}
+
+    {% if report.file %}
+      <table class="meta">
+        <tr><td>File</td><td>{{ report.file.name }}</td></tr>
+        <tr><td>Size</td><td>{{ report.file.size }} bytes</td></tr>
+        <tr><td>Type</td><td>{{ report.file.detected_type }}</td></tr>
+        <tr><td>SHA-256</td><td>{{ report.file.sha256 }}</td></tr>
+        {% if report.file.signature and report.file.signature.present %}
+          <tr><td>Signature</td><td>
+            {{ "valid, trusted" if report.file.signature.trusted_chain else "present" }}
+            {{ report.file.signature.subject or "" }}</td></tr>
+        {% endif %}
+      </table>
+    {% endif %}
+    {% if report.url %}
+      <table class="meta">
+        <tr><td>URL</td><td>{{ report.url.normalized }}</td></tr>
+        {% if report.url.final_url and report.url.final_url != report.url.normalized %}
+          <tr><td>Final</td><td>{{ report.url.final_url }}</td></tr>
+        {% endif %}
+        {% if report.url.registrable_domain %}
+          <tr><td>Domain</td><td>{{ report.url.registrable_domain }}</td></tr>
+        {% endif %}
+      </table>
+    {% endif %}
+
+    <h2>Why this verdict</h2>
+    {% if signals %}
+      {% for s in signals %}
+        <div class="card">
+          <div class="sev">{{ s.severity.value }} · {{ s.source }} · weight {{ s.weight }}</div>
+          <div>{{ s.title_en }}</div>
+          {% if s.detail %}<div class="meta">{{ s.detail }}</div>{% endif %}
+          {% if s.mitre %}<div class="meta">MITRE ATT&CK: {{ s.mitre | join(", ") }}</div>{% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="meta">No signals were produced.</p>
+    {% endif %}
+
+    <footer>
+      PreScan {{ report.app_version }} · scan {{ report.scan_id }}.
+      PreScan is not an antivirus and does not replace your system's protection.
+      The verdict is informational; the decision to run a file is yours.
+    </footer>
   </body>
 </html>

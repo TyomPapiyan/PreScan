@@ -9,6 +9,7 @@ is Qt-only glue — no detection logic lives here (§10.1 keeps that in core).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,7 @@ from prescan.core.models import (
     Verdict,
 )
 from prescan.core.pipeline import Pipeline
+from prescan.core.ratelimit import RateLimiter
 from prescan.core.storage import Storage
 from prescan.ui.models_qml import DictListModel
 
@@ -48,6 +50,9 @@ class Bridge(QObject):
     scanFinished = Signal()
     themeChanged = Signal()
     languageChanged = Signal()
+    settingsChanged = Signal()
+    showResult = Signal()
+    keyCheckResult = Signal(str, str)  # provider id, human-readable result
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -56,12 +61,13 @@ class Bridge(QObject):
         self._paths.ensure()
         self._storage = Storage(self._paths.db_path)
         self._pipeline = Pipeline(self._config, self._storage)
+        self._limiter = RateLimiter()
 
         self._stagesModel = DictListModel(["stageId", "title", "status", "availability", "summary"])
         self._signalsModel = DictListModel(
             ["source", "severity", "title", "detail", "weight", "mitre"]
         )
-        self._historyModel = DictListModel(["stamp", "verdict", "target"])
+        self._historyModel = DictListModel(["stamp", "verdict", "target", "sha256"])
         self._quarantineModel = DictListModel(["entryId", "name", "verdict"])
         self._enginesModel = DictListModel(["name", "availability", "detail"])
 
@@ -274,10 +280,48 @@ class Bridge(QObject):
                 "stamp": entry.created_at.strftime("%Y-%m-%d %H:%M"),
                 "verdict": entry.verdict,
                 "target": entry.target,
+                "sha256": entry.sha256,
             }
-            for entry in self._storage.list_history(limit=100)
+            for entry in self._storage.list_history(limit=200)
         ]
         self._historyModel.replace(rows)
+
+    @Slot(str, str)
+    def filterHistory(self, verdict: str, query: str) -> None:
+        """Reload history filtered by verdict ('all' = any) and a name/hash query."""
+        q = query.strip().lower()
+        rows = []
+        for entry in self._storage.list_history(limit=500):
+            if verdict not in ("all", "") and entry.verdict != verdict:
+                continue
+            if q and q not in entry.target.lower() and q not in entry.sha256.lower():
+                continue
+            rows.append(
+                {
+                    "stamp": entry.created_at.strftime("%Y-%m-%d %H:%M"),
+                    "verdict": entry.verdict,
+                    "target": entry.target,
+                    "sha256": entry.sha256,
+                }
+            )
+        self._historyModel.replace(rows)
+
+    @Slot()
+    def clearHistory(self) -> None:
+        self._storage.clear_history()
+        self._historyModel.clear()
+
+    @Slot(str, result=bool)
+    def openReport(self, sha256: str) -> bool:
+        """Load a stored report by hash and show it on the result screen."""
+        if not sha256:
+            return False
+        report = self._storage.get_report(sha256)
+        if report is None:
+            return False
+        self._apply_report(report)
+        self.showResult.emit()
+        return True
 
     @Slot()
     def loadQuarantine(self) -> None:
@@ -298,6 +342,39 @@ class Bridge(QObject):
         quarantine(self._report.file.path, self._report)
         self.loadQuarantine()
 
+    @Slot(str, str, result=bool)
+    def restoreQuarantine(self, entry_id: str, dest: str) -> bool:
+        """Restore a quarantined file to a chosen directory (with UI confirmation)."""
+        from prescan.core.quarantine import QuarantineError, restore
+
+        out = dest[len("file://") :] if dest.startswith("file://") else dest
+        try:
+            restore(entry_id, Path(out))
+        except QuarantineError:
+            return False
+        return True
+
+    @Slot(str)
+    def deleteQuarantine(self, entry_id: str) -> None:
+        from prescan.core.quarantine import purge
+
+        purge(entry_id)
+        self.loadQuarantine()
+
+    @Slot(str)
+    def rescanQuarantine(self, entry_id: str) -> None:
+        """Restore the quarantined file to a temp dir and scan it again."""
+        import tempfile
+
+        from prescan.core.quarantine import QuarantineError, restore
+
+        try:
+            tmp = Path(tempfile.mkdtemp(prefix="prescan-rescan-", dir=self._paths.tmp_dir))
+            restored = restore(entry_id, tmp)
+        except QuarantineError:
+            return
+        self.scanFile(str(restored))
+
     @Slot(str, result=bool)
     def saveReport(self, path: str) -> bool:
         if self._report is None:
@@ -309,15 +386,148 @@ class Bridge(QObject):
         return True
 
     # ---- settings / privacy ------------------------------------------- #
+    def _persist(self) -> None:
+        with contextlib.suppress(OSError):
+            self._config.save()
+
     @Slot(str)
     def setTheme(self, name: str) -> None:
         self._theme = name
+        self._config.theme = name
+        self._persist()
         self.themeChanged.emit()
 
     @Slot(str)
     def setLanguage(self, code: str) -> None:
         self._language = code
+        self._config.language = code
+        self._persist()
         self.languageChanged.emit()
+
+    # ---- privacy toggles (bound to AppConfig, persisted) -------------- #
+    @Property(bool, notify=settingsChanged)
+    def neverUpload(self) -> bool:
+        return self._config.never_upload_files
+
+    @Property(bool, notify=settingsChanged)
+    def onlyHashes(self) -> bool:
+        return self._config.only_send_hashes
+
+    @Property(bool, notify=settingsChanged)
+    def allowNetwork(self) -> bool:
+        return self._config.allow_network
+
+    @Slot(bool)
+    def setNeverUpload(self, value: bool) -> None:
+        self._config.never_upload_files = value
+        self._persist()
+        self.settingsChanged.emit()
+
+    @Slot(bool)
+    def setOnlyHashes(self, value: bool) -> None:
+        self._config.only_send_hashes = value
+        self._persist()
+        self.settingsChanged.emit()
+
+    @Slot(bool)
+    def setAllowNetwork(self, value: bool) -> None:
+        self._config.allow_network = value
+        self._persist()
+        self.settingsChanged.emit()
+
+    # ---- scanning limits (bound to AppConfig, persisted) -------------- #
+    @Property(int, notify=settingsChanged)
+    def maxDownloadMb(self) -> int:
+        return self._config.max_download_bytes // (1024 * 1024)
+
+    @Property(int, notify=settingsChanged)
+    def scanTimeoutS(self) -> int:
+        return int(self._config.scan_timeout_s)
+
+    @Property(int, notify=settingsChanged)
+    def archiveDepth(self) -> int:
+        return self._config.max_archive_depth
+
+    @Property(int, notify=settingsChanged)
+    def cacheTtlDays(self) -> int:
+        return self._config.cache_ttl_days
+
+    @Slot(int)
+    def setMaxDownloadMb(self, value: int) -> None:
+        self._config.max_download_bytes = max(1, value) * 1024 * 1024
+        self._persist()
+        self.settingsChanged.emit()
+
+    @Slot(int)
+    def setScanTimeoutS(self, value: int) -> None:
+        self._config.scan_timeout_s = float(max(1, value))
+        self._persist()
+        self.settingsChanged.emit()
+
+    @Slot(int)
+    def setArchiveDepth(self, value: int) -> None:
+        self._config.max_archive_depth = max(1, value)
+        self._persist()
+        self.settingsChanged.emit()
+
+    @Slot(int)
+    def setCacheTtlDays(self, value: int) -> None:
+        self._config.cache_ttl_days = max(0, value)
+        self._persist()
+        self.settingsChanged.emit()
+
+    # ---- API keys (kept in the OS keyring, never shown) --------------- #
+    @Slot(str, result=bool)
+    def hasApiKey(self, provider: str) -> bool:
+        from prescan.core.config import get_api_key
+
+        return bool(get_api_key(provider))
+
+    @Slot(str, str)
+    def setApiKey(self, provider: str, key: str) -> None:
+        from prescan.core.config import set_api_key
+
+        if key:
+            set_api_key(provider, key)
+            self.settingsChanged.emit()
+
+    @Slot(str)
+    def checkKey(self, provider: str) -> None:
+        """Probe a provider with its stored key; emit keyCheckResult(provider, text)."""
+        self._schedule(self._check_key(provider))
+
+    async def _check_key(self, provider: str) -> None:
+        from prescan.core.config import get_api_key
+        from prescan.core.providers import build_hash_providers, build_url_providers
+
+        by_name = {
+            p.name: p
+            for p in [
+                *build_hash_providers(self._limiter),
+                *build_url_providers(self._limiter),
+            ]
+        }
+        prov = by_name.get(provider)
+        if prov is None or not get_api_key(provider):
+            self.keyCheckResult.emit(provider, "No key configured")
+            return
+        try:
+            availability, detail = await prov.availability()
+            if availability.value != "ready":
+                self.keyCheckResult.emit(
+                    provider, self.availabilityText(availability.value, detail)
+                )
+                return
+            quota = await prov.remaining_quota()
+            self.keyCheckResult.emit(provider, f"OK · quota: {quota}" if quota else "OK")
+        except Exception as exc:  # noqa: BLE001 - report any probe failure to the UI
+            self.keyCheckResult.emit(provider, f"Error: {exc}")
+
+    @Slot(result="QStringList")
+    def providerIds(self) -> list[str]:
+        from prescan.core.config import PROVIDER_IDS
+
+        return list(PROVIDER_IDS)
 
     @Slot(str, str, result=str)
     def availabilityText(self, availability: str, detail: str) -> str:

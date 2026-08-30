@@ -39,9 +39,7 @@ _CASES: list[tuple[str, Callable[[], bytes], bool]] = [
 ]
 
 
-@pytest.mark.parametrize(
-    ("name", "content", "expected"), _CASES, ids=[row[0] for row in _CASES]
-)
+@pytest.mark.parametrize(("name", "content", "expected"), _CASES, ids=[row[0] for row in _CASES])
 def test_extension_mismatch_contract(
     tmp_path: Path, name: str, content: Callable[[], bytes], expected: bool
 ) -> None:

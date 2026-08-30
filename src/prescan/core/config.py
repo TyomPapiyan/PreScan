@@ -202,6 +202,59 @@ class AppConfig(BaseModel):
             log.warning("config.load.failed", path=str(cfg_path), error=str(exc))
             return cls()
 
+    def to_toml(self) -> str:
+        """Serialise the config to TOML (round-trips through ``load``)."""
+        scalars = [
+            "allow_network",
+            "never_upload_files",
+            "only_send_hashes",
+            "ml_threshold",
+            "cache_ttl_days",
+            "max_download_bytes",
+            "max_archive_depth",
+            "max_archive_ratio",
+            "connect_timeout_s",
+            "scan_timeout_s",
+            "language",
+            "theme",
+        ]
+        lines = [f"{key} = {_toml_value(getattr(self, key))}" for key in scalars]
+        lines += ["", "[clamd]"]
+        if self.clamd.socket is not None:
+            lines.append(f"socket = {_toml_value(self.clamd.socket)}")
+        if self.clamd.host is not None:
+            lines.append(f"host = {_toml_value(self.clamd.host)}")
+        lines.append(f"port = {self.clamd.port}")
+        if self.enabled_engines:
+            lines += ["", "[enabled_engines]"]
+            lines += [f"{k} = {_toml_value(v)}" for k, v in self.enabled_engines.items()]
+        return "\n".join(lines) + "\n"
+
+    def save(self, path: Path | None = None) -> None:
+        """Write the config to TOML (user config dir by default)."""
+        cfg_path = path or (Paths.resolve().config_dir / "config.toml")
+        cfg_path.parent.mkdir(parents=True, exist_ok=True)
+        cfg_path.write_text(self.to_toml(), encoding="utf-8")
+
+
+def _toml_value(value: object) -> str:
+    """Serialise a scalar to a TOML literal."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+    return f'"{escaped}"'
+
+
+def set_api_key(provider_id: str, key: str) -> None:
+    """Store a provider API key in the OS keyring (never in config/logs, §10.5)."""
+    if provider_id not in PROVIDER_IDS:
+        raise ConfigError(f"unknown provider id: {provider_id!r}")
+    import keyring
+
+    keyring.set_password(KEYRING_SERVICE, provider_id, key)
+
 
 def get_api_key(provider_id: str) -> str | None:
     """Return the API key for a provider from the OS keyring, or None.

@@ -10,17 +10,23 @@ capa rule download is deferred from the first version and not implemented here.
 
 from __future__ import annotations
 
+import asyncio
 import shutil
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 import httpx
 import structlog
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from prescan.core.archives import safe_extract
+from prescan.core.engines.clamd_client import ClamdClient
 from prescan.core.errors import UpdateError
+
+if TYPE_CHECKING:
+    from prescan.core.config import AppConfig
 
 log = structlog.get_logger(__name__)
 
@@ -82,3 +88,78 @@ async def update_yara_rules(
 
     log.info("yara.rules_installed", count=installed, dir=str(yara_rules_dir))
     return installed
+
+
+@dataclass
+class ClamavUpdateResult:
+    """Outcome of a ClamAV database update (freshclam + clamd RELOAD)."""
+
+    freshclam_ran: bool
+    freshclam_ok: bool
+    freshclam_output: str
+    reload_response: str
+    reloaded: bool
+    message: str
+
+
+async def _run_freshclam(freshclam: str, timeout_s: float) -> tuple[bool, str]:
+    """Run freshclam and return (ok, combined output)."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            freshclam,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
+        return proc.returncode == 0, out.decode("utf-8", "replace").strip()
+    except (TimeoutError, OSError) as exc:
+        return False, str(exc)
+
+
+async def update_clamav_databases(
+    config: AppConfig,
+    *,
+    client: ClamdClient | None = None,
+    timeout_s: float = 300.0,
+) -> ClamavUpdateResult:
+    """Refresh ClamAV signatures with freshclam, then ask clamd to RELOAD.
+
+    Never reports silent success: if clamd does not confirm the reload (the
+    RELOAD command is disabled on some daemons and answers 'COMMAND UNAVAILABLE'),
+    the result says the databases will be applied automatically within ~10
+    minutes by clamd's periodic self-check.
+    """
+    freshclam = shutil.which("freshclam")
+    if freshclam is None:
+        freshclam_ran, freshclam_ok, freshclam_output = False, False, "freshclam not found"
+    else:
+        freshclam_ran = True
+        freshclam_ok, freshclam_output = await _run_freshclam(freshclam, timeout_s)
+
+    if client is None:
+        client = ClamdClient(
+            socket=config.clamd.socket,
+            host=config.clamd.host,
+            port=config.clamd.port,
+            timeout_s=config.scan_timeout_s,
+        )
+    reload_response = await client.reload()
+    reloaded = reload_response.strip().upper().startswith("RELOADING")
+
+    if reloaded:
+        message = "ClamAV databases updated and reloaded."
+    else:
+        message = (
+            "ClamAV databases downloaded, but clamd did not reload them "
+            f"(daemon replied: {reload_response or 'no response'}). They will be "
+            "applied automatically within about 10 minutes by clamd's self-check."
+        )
+
+    return ClamavUpdateResult(
+        freshclam_ran=freshclam_ran,
+        freshclam_ok=freshclam_ok,
+        freshclam_output=freshclam_output,
+        reload_response=reload_response,
+        reloaded=reloaded,
+        message=message,
+    )

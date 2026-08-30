@@ -38,3 +38,37 @@ async def test_update_raises_on_http_error(tmp_path: Path) -> None:
     respx.get(YARA_FORGE_FULL_URL).mock(return_value=httpx.Response(500))
     with pytest.raises(UpdateError):
         await update_yara_rules(tmp_path / "yara", timeout_s=30)
+
+
+class _FakeClient:
+    def __init__(self, response: str) -> None:
+        self._response = response
+
+    async def reload(self) -> str:
+        return self._response
+
+
+@pytest.mark.asyncio
+async def test_clamav_update_warns_when_reload_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    from prescan.core import updater
+    from prescan.core.config import AppConfig
+
+    monkeypatch.setattr(updater.shutil, "which", lambda _name: None)  # skip real freshclam
+    result = await updater.update_clamav_databases(
+        AppConfig(), client=_FakeClient("COMMAND UNAVAILABLE")
+    )
+    assert result.reloaded is False
+    assert "10 minutes" in result.message  # not a silent success
+
+
+@pytest.mark.asyncio
+async def test_clamav_update_reports_reload(monkeypatch: pytest.MonkeyPatch) -> None:
+    from prescan.core import updater
+    from prescan.core.config import AppConfig
+
+    monkeypatch.setattr(updater.shutil, "which", lambda _name: None)
+    result = await updater.update_clamav_databases(
+        AppConfig(), client=_FakeClient("RELOADING")
+    )
+    assert result.reloaded is True
+    assert "reloaded" in result.message

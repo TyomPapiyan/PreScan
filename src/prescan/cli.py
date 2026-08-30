@@ -157,6 +157,25 @@ def update_rules() -> None:
     typer.secho(f"Installed {count} YARA rule file(s).", fg=typer.colors.GREEN)
 
 
+@app.command(name="update-clamav")
+def update_clamav() -> None:
+    """Refresh ClamAV signatures (freshclam) and ask clamd to reload them."""
+    from prescan.core.updater import update_clamav_databases
+
+    result = asyncio.run(update_clamav_databases(AppConfig.load()))
+
+    if not result.freshclam_ran:
+        typer.secho("freshclam: not found", fg=typer.colors.YELLOW)
+    elif result.freshclam_ok:
+        typer.secho("freshclam: databases refreshed", fg=typer.colors.GREEN)
+    else:
+        typer.secho(f"freshclam: failed — {result.freshclam_output}", fg=typer.colors.YELLOW)
+
+    # Never report silent success: warn when clamd did not confirm the reload.
+    colour = typer.colors.GREEN if result.reloaded else typer.colors.YELLOW
+    typer.secho(result.message, fg=colour)
+
+
 async def _run_scan(request: ScanRequest) -> ScanReport:
     """Build a pipeline (with cache/history storage) from config and run it."""
     from prescan.core.config import Paths

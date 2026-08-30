@@ -109,6 +109,17 @@ class ClamdClient:
         except (TimeoutError, ClamdUnavailableError):
             return ""
 
+    async def reload(self) -> str:
+        """Send RELOAD; return the daemon's reply ('RELOADING' on success).
+
+        Some deployments disable the command and answer 'COMMAND UNAVAILABLE';
+        the caller must surface that rather than assume the reload happened.
+        """
+        try:
+            return await self._command(b"nRELOAD\n")
+        except (TimeoutError, ClamdUnavailableError) as exc:
+            return f"error: {exc}"
+
     async def instream_file(self, path: Path) -> ScanResult:
         """Scan a file by streaming its bytes to clamd via INSTREAM."""
         async with asyncio.timeout(self._timeout_s):

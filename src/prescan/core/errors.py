@@ -18,6 +18,12 @@ class ConfigError(PreScanError):
     """Configuration could not be loaded or validated."""
 
 
+class ScanCancelled(PreScanError):  # noqa: N818 - control-flow signal, not a fault
+    """The user cancelled the scan. A plain exception (not asyncio.CancelledError)
+    so it propagates cleanly out of a worker thread (to_thread swallows the
+    latter)."""
+
+
 class EngineError(PreScanError):
     """A local engine failed in a way that is not a parse error."""
 

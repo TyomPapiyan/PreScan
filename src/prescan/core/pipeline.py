@@ -19,13 +19,14 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import structlog
 
 from prescan.core.config import AppConfig, Paths
 from prescan.core.engines import build_engines
 from prescan.core.engines.base import Engine, ScanContext
-from prescan.core.errors import EngineSkipped
+from prescan.core.errors import EngineSkipped, ScanCancelled
 from prescan.core.hashing import fuzzy_hash, hash_file, imphash
 from prescan.core.identify import identify
 from prescan.core.models import (
@@ -95,9 +96,10 @@ class Pipeline:
         stages: list[StageResult] = []
         signals: list[Signal] = []
         unavailable: list[str] = []
+        file_info: FileInfo | None = None
 
         try:
-            file_info = await self._collect_file_info(request.file_path, stages, on_stage)
+            file_info = await self._collect_file_info(request.file_path, stages, on_stage, cancel)
 
             # Stage 3: cache. A fresh hit short-circuits the pipeline (§6).
             cached = await self._check_cache(file_info, request, stages, on_stage)
@@ -125,6 +127,13 @@ class Pipeline:
 
             verdict, risk, reason_key, reason_en = self._score(
                 signals, had_authoritative=had_authoritative, cancelled=cancel.is_set()
+            )
+        except (asyncio.CancelledError, ScanCancelled):
+            # Cancel fired mid-scan (e.g. during large-file hashing): finish with a
+            # partial UNKNOWN report instead of propagating (§9.5).
+            cancel.set()
+            verdict, risk, reason_key, reason_en = self._score(
+                signals, had_authoritative=False, cancelled=True
             )
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
@@ -201,6 +210,7 @@ class Pipeline:
         path: Path,
         stages: list[StageResult],
         on_stage: OnStage | None,
+        cancel: asyncio.Event,
     ) -> FileInfo:
         """Run stages 1-4 and assemble the FileInfo record."""
         resolved = path.resolve()
@@ -212,10 +222,10 @@ class Pipeline:
             detected_type, detected_mime, mismatch = identify(resolved)
             st.summary = detected_type
 
-        # Stage 2: hashing. These stages are cheap and needed for the report and
-        # cache key, so they always complete; cancellation aborts the engine phase.
+        # Stage 2: hashing. Honours cancel so a huge file stops promptly (<2s):
+        # hash_file checks the event between 1 MiB chunks and raises CancelledError.
         with self._stage("hashing", "stage.hashing", stages, on_stage) as st:
-            digests = await hash_file(resolved)
+            digests = await hash_file(resolved, cancel=cancel)
             imp = await asyncio.to_thread(_safe_imphash, resolved)
             fuzzy = await asyncio.to_thread(fuzzy_hash, resolved)
             st.summary = f"sha256:{digests['sha256'][:12]}"
@@ -316,9 +326,7 @@ class Pipeline:
             ctx.workdir.mkdir(parents=True, exist_ok=True)
             return await engine.scan(ctx)
 
-        results = await asyncio.gather(
-            *(run_one(engine) for engine in runnable), return_exceptions=True
-        )
+        results = await self._gather_or_cancel([run_one(engine) for engine in runnable], cancel)
 
         collected: list[Signal] = []
         had_authoritative = False
@@ -332,6 +340,10 @@ class Pipeline:
                 st.status = StageStatus.SKIPPED
                 st.availability = Availability(outcome.availability)
                 st.summary = outcome.summary
+                unavailable.append(engine.name)
+            elif isinstance(outcome, asyncio.CancelledError):
+                st.status = StageStatus.CANCELLED
+                st.summary = "cancelled"
                 unavailable.append(engine.name)
             elif isinstance(outcome, BaseException):
                 st.status = StageStatus.FAILED
@@ -348,6 +360,29 @@ class Pipeline:
             _notify(on_stage, st)
 
         return collected, had_authoritative
+
+    async def _gather_or_cancel(self, coros: list[Any], cancel: asyncio.Event) -> list[Any]:
+        """Await all coroutines, but abort promptly if cancel fires (<2s, §9.9).
+
+        Engines that run blocking work in a worker thread cannot be interrupted
+        mid-call; on cancel we stop awaiting them and return CancelledError for
+        each so the pipeline finishes fast (the orphaned thread ends on its own).
+        """
+        tasks = [asyncio.ensure_future(c) for c in coros]
+        gather: asyncio.Future[list[Any]] = asyncio.gather(*tasks, return_exceptions=True)
+        cancel_wait: asyncio.Future[Any] = asyncio.ensure_future(cancel.wait())
+        waitables: list[asyncio.Future[Any]] = [gather, cancel_wait]
+        await asyncio.wait(waitables, return_when=asyncio.FIRST_COMPLETED)
+        if gather.done():
+            cancel_wait.cancel()
+            return list(gather.result())
+        # Cancel fired first: stop awaiting the engines and return cancellations.
+        for task in tasks:
+            task.cancel()
+        gather.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await gather
+        return [asyncio.CancelledError() for _ in tasks]
 
     # ------------------------------------------------------------------ #
     # Stage 11: cloud reputation by hash (only the SHA-256 leaves, §6.2)
@@ -619,7 +654,7 @@ class Pipeline:
 
         workdir = downloaded.parent
         try:
-            file_info = await self._collect_file_info(downloaded, stages, on_stage)
+            file_info = await self._collect_file_info(downloaded, stages, on_stage, cancel)
             signals += self._identify_signals(file_info)
             signals += signature_signals(file_info.signature) if file_info.signature else []
             engine_signals, had_auth = await self._run_engines(

@@ -109,8 +109,9 @@ target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
 # Markdown is documentation, not source. Ruff 0.16 reformats Python fences inside
-# .md files; keep PRESCAN-SPEC.md and other docs verbatim.
-extend-exclude = ["*.md"]
+# .md files; keep PRESCAN-SPEC.md and other docs verbatim. Vendored RinUI is
+# third-party code (§11.2) and is not linted or type-checked.
+extend-exclude = ["*.md", "src/prescan/ui/vendor"]
 
 [tool.ruff.lint]
 select = [
@@ -138,6 +139,12 @@ select = [
 # IDN-homograph tests deliberately embed a Cyrillic 'а' to exercise detection.
 "tests/unit/test_url_normalize.py" = ["RUF001", "RUF003"]
 "tests/unit/test_url_heuristics.py" = ["RUF001", "RUF003"]
+# The Qt UI layer follows Qt naming (mixedCase signals/properties/slots) and is
+# the one place Qt may be imported (§10.1 bans it in core/, enforced there +
+# by tests/unit/test_core_has_no_qt.py).
+"src/prescan/ui/**" = ["N802", "N815", "N803", "TID251"]
+# UI tests exercise the Qt layer and legitimately import PySide6.
+"tests/ui/**" = ["TID251"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["prescan"]
@@ -159,6 +166,7 @@ disallow_any_generics = true
 no_implicit_reexport = true
 show_error_codes = true
 files = ["src"]
+exclude = ["src/prescan/ui/vendor/"]
 
 [[tool.mypy.overrides]]
 # Third-party packages that ship no type information.
@@ -169,6 +177,7 @@ module = [
     "pyzipper.*",
     "lief.*",
     "yara_x.*",
+    "qasync.*",
 ]
 ignore_missing_imports = true
 

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from prescan.core.errors import ScanCancelled
 from prescan.core.hashing import fuzzy_hash, hash_file
 
 
@@ -30,7 +31,7 @@ async def test_hash_file_honours_cancel(tmp_path: Path) -> None:
     target.write_bytes(b"x" * (4 * 1024 * 1024))
     cancel = asyncio.Event()
     cancel.set()
-    with pytest.raises(asyncio.CancelledError):
+    with pytest.raises(ScanCancelled):
         await hash_file(target, cancel=cancel)
 
 

@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 
 import structlog
 
+from prescan.core.errors import ScanCancelled
+
 if TYPE_CHECKING:
     import lief
 
@@ -30,7 +32,7 @@ def _hash_sync(path: Path, cancel: asyncio.Event | None) -> dict[str, str]:
     with path.open("rb") as fh:
         while True:
             if cancel is not None and cancel.is_set():
-                raise asyncio.CancelledError
+                raise ScanCancelled
             chunk = fh.read(CHUNK_SIZE)
             if not chunk:
                 break

@@ -43,6 +43,7 @@ class HistoryEntry(Base):
     verdict: Mapped[str] = mapped_column(String(16))
     risk_score: Mapped[int] = mapped_column()
     sources: Mapped[str] = mapped_column(Text, default="")
+    sha256: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column()
 
 
@@ -57,7 +58,19 @@ class Storage:
     def __init__(self, db_path: Path) -> None:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self._engine = create_engine(f"sqlite:///{db_path}", future=True)
+        self._migrate()
         Base.metadata.create_all(self._engine)
+
+    def _migrate(self) -> None:
+        """Light dev migration: drop the history table if it predates a column."""
+        from sqlalchemy import inspect, text
+
+        inspector = inspect(self._engine)
+        if "history" in inspector.get_table_names():
+            columns = {c["name"] for c in inspector.get_columns("history")}
+            if "sha256" not in columns:
+                with self._engine.begin() as conn:
+                    conn.execute(text("DROP TABLE history"))
 
     # ---- cache (§6 stage 3) -------------------------------------------- #
     def get_cached(self, sha256: str, *, ttl_days: int) -> ScanReport | None:
@@ -71,6 +84,12 @@ class Storage:
                 return None
             report = from_json(entry.report_json)
             return report.model_copy(update={"from_cache": True})
+
+    def get_report(self, sha256: str) -> ScanReport | None:
+        """Return the cached report for a hash regardless of TTL (history view)."""
+        with Session(self._engine) as session:
+            entry = session.get(CacheEntry, sha256)
+            return from_json(entry.report_json) if entry is not None else None
 
     def put_cache(self, report: ScanReport) -> None:
         """Store or refresh a report in the cache keyed by its SHA-256."""
@@ -94,6 +113,7 @@ class Storage:
         """Append a scan to the history table."""
         target = report.file.name if report.file else (report.url.original if report.url else "")
         sources = ",".join(sorted({s.source for s in report.signals}))
+        sha256 = report.file.sha256 if report.file else ""
         with Session(self._engine) as session:
             session.add(
                 HistoryEntry(
@@ -103,6 +123,7 @@ class Storage:
                     verdict=report.verdict.value,
                     risk_score=report.risk_score,
                     sources=sources,
+                    sha256=sha256,
                     created_at=report.finished_at,
                 )
             )

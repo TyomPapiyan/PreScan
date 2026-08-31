@@ -126,8 +126,21 @@ def score(
         )
 
     # ---- §8.3 SAFE / UNKNOWN -------------------------------------------- #
-    ml_ok = (ml_prob is not None and ml_prob < 0.20) or (ml_prob is None and trusted)
-    no_low_or_worse = _max_severity(signals) < _SEVERITY_ORDER[Severity.LOW]
+    # A valid trusted signature satisfies the ML clearance condition on par with
+    # ml_prob < 0.20. This compensates a known systematic bias (§16.12): the runtime
+    # authenticode sub-vector is always zero (no signify at inference, §3.4), which
+    # inflates the probability of correctly-signed PEs by up to ~0.24 -- enough to
+    # keep a clean signed Windows binary out of SAFE forever. A genuinely malicious
+    # score (ml_prob >= 0.70) still escalates above and never reaches here.
+    ml_ok = (ml_prob is not None and ml_prob < 0.20) or trusted
+    # The ML signal is scored entirely through ml_prob (escalation §8.2 at 0.70,
+    # clearance §8.3 at 0.20 plus the signature compensation above). Its severity
+    # exists only so the user sees an honest tier in the signal list; counting it
+    # here too would double-count the same feature and, on a signed clean PE with a
+    # ~0.24 biased probability, wrongly block SAFE. So exclude source == "ml".
+    no_low_or_worse = (
+        _max_severity([s for s in signals if s.source != "ml"]) < _SEVERITY_ORDER[Severity.LOW]
+    )
 
     if had_authoritative_source and no_low_or_worse and ml_ok:
         risk = min(_SAFE_CEIL, base_score)

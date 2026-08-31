@@ -37,10 +37,13 @@ def _escalating(source: str, title: str, weight: int = 30, **data: Any) -> Signa
 
 
 def _ml(prob: float) -> Signal:
+    # Mirror the engine's severity tiers so no_low_or_worse tests are realistic:
+    # a 0.24 probability is a LOW-severity signal, which must still not block SAFE.
+    severity = Severity.HIGH if prob >= 0.70 else Severity.LOW if prob >= 0.20 else Severity.INFO
     return Signal(
         source="ml",
         kind=SourceKind.ML,
-        severity=Severity.INFO,
+        severity=severity,
         title_key="k",
         title_en="ml",
         data={"probability": prob},
@@ -175,6 +178,21 @@ def test_unknown_without_authoritative_source() -> None:
 def test_safe_when_ml_absent_but_trusted_signature() -> None:
     verdict, _r, _k, _rr = score([_trusted_signature()], had_authoritative_source=True)
     assert verdict is Verdict.SAFE
+
+
+def test_trusted_signature_clears_biased_ml_probability() -> None:
+    """A trusted signature clears a signed file even when the (zero-authenticode)
+    ML probability sits above 0.20 -- the known §16.12 bias must not block SAFE."""
+    signals = [_trusted_signature(), _ml(0.24)]
+    verdict, risk, _k, _r = score(signals, had_authoritative_source=True)
+    assert verdict is Verdict.SAFE
+    assert risk <= 20
+
+
+def test_trusted_signature_does_not_rescue_strongly_malicious_ml() -> None:
+    """Trust clears low/ambiguous ML, but a decisive ML score still escalates."""
+    verdict, _r, _k, _rr = score([_trusted_signature(), _ml(0.95)], had_authoritative_source=True)
+    assert verdict is Verdict.SUSPICIOUS
 
 
 def test_clean_with_no_sources_is_unknown() -> None:

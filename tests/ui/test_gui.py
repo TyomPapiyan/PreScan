@@ -23,6 +23,27 @@ def test_main_qml_loads_with_zero_warnings(gui: Any) -> None:
     assert gui.load_warnings == [], f"QML warnings during load: {gui.load_warnings}"
 
 
+def test_app_icon_is_multisize(gui: Any) -> None:
+    """The window/taskbar icon must load with real sizes (no gear fallback)."""
+    from prescan.ui.app import app_icon
+
+    icon = app_icon()
+    assert not icon.isNull()
+    sizes = {(s.width(), s.height()) for s in icon.availableSizes()}
+    assert {(16, 16), (32, 32), (256, 256)} <= sizes
+
+
+def test_desktop_file_binds_identity() -> None:
+    """prescan.desktop must carry the keys that drop 'python3' in the shell."""
+    from pathlib import Path
+
+    txt = Path("packaging/prescan.desktop").read_text(encoding="utf-8")
+    assert "Name=PreScan" in txt
+    assert "Icon=prescan" in txt
+    assert "StartupWMClass=prescan" in txt  # X11
+    assert "Categories=Utility;Security;" in txt
+
+
 def test_availability_text_covers_too_large(gui: Any) -> None:
     """The size-limit availability must render a real label, never an empty string."""
     from prescan.core.models import Availability

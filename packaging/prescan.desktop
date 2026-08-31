@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=PreScan
+GenericName=File & link malware pre-scanner
+Comment=Check a file or link for malware before you open it
+Exec=prescan
+Icon=prescan
+Terminal=false
+Categories=Utility;Security;
+Keywords=malware;antivirus;scan;security;
+StartupNotify=true
+StartupWMClass=prescan

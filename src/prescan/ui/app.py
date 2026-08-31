@@ -32,6 +32,31 @@ _STYLE = "FluentWinUI3"
 _translator: object | None = None
 
 
+def _icons_dir() -> Path:
+    """Locate the icons directory in dev and inside a PyInstaller --onedir bundle."""
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+        return base / "resources" / "icons"
+    return _UI_DIR.parents[2] / "resources" / "icons"
+
+
+def app_icon() -> object:
+    """The multi-size window/taskbar icon (the same shield as the in-app mark)."""
+    from PySide6.QtGui import QIcon
+
+    icons = _icons_dir()
+    icon = QIcon()
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
+        png = icons / f"prescan_{size}.png"
+        if png.exists():
+            icon.addFile(str(png))
+    if icon.isNull():  # PNGs missing (e.g. not generated): fall back to the SVG
+        svg = icons / "prescan.svg"
+        if svg.exists():
+            icon.addFile(str(svg))
+    return icon
+
+
 def apply_language(engine: QQmlApplicationEngine, code: str) -> None:
     """Install/remove the QTranslator for ``code`` and retranslate live (§9.8)."""
     from PySide6.QtCore import QCoreApplication, QTranslator
@@ -94,7 +119,15 @@ def run() -> int:
 
     configure_style()
     app = QGuiApplication(sys.argv)
+    # Identity in the OS shell: without a display name + desktop file the window
+    # shows up as "python3" with a gear icon in the dock/taskbar.
     app.setApplicationName("PreScan")
+    app.setApplicationDisplayName("PreScan")
+    app.setOrganizationName("PreScan")
+    # setDesktopFileName is what binds the window to prescan.desktop on GNOME/Wayland;
+    # StartupWMClass in that file covers X11. Both are needed to drop "python3".
+    QGuiApplication.setDesktopFileName("prescan")
+    app.setWindowIcon(app_icon())  # type: ignore[arg-type]
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)
 

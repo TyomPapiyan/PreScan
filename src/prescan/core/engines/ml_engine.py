@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final
 import structlog
 
 from prescan.core.engines.base import ScanContext
-from prescan.core.errors import EngineSkipped
+from prescan.core.errors import EngineSkipped, ScanCancelled
 from prescan.core.models import Availability, Severity, Signal, SourceKind
 
 if TYPE_CHECKING:
@@ -25,15 +25,16 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger(__name__)
 
-#: A malicious probability at or above this is highlighted; §8.2 escalation and
-#: §8.3 clearance thresholds live in scoring.py, not here.
+#: Probability tiers for the signal severity the user sees. The verdict thresholds
+#: themselves live in scoring.py (§8.2 escalation 0.70, §8.3 clearance 0.20).
 _SUSPICIOUS_PROB = 0.70
 _BENIGN_PROB = 0.20
 
-#: Feature extraction runs at ~160 ms/MiB (measured), so the ml stage is skipped
-#: above this size to keep it within a few seconds (precedent: ClamAV limit §16.9).
-#: The bounded-time budget of §6 row 10 covers files up to this cap.
-ML_MAX_BYTES: Final = 64 * 1024 * 1024
+#: After vectorizing feature extraction (~120 ms/MiB measured), 256 MiB extracts in
+#: ~30 s worst case -- within the 300 s pipeline timeout, comparable to capa's budget,
+#: and it covers essentially all downloaded installers (the main pre-execution threat).
+#: Above this the ml stage is skipped like the ClamAV size limit (§16.9).
+ML_MAX_BYTES: Final = 256 * 1024 * 1024
 
 
 class MLEngine:
@@ -74,12 +75,14 @@ class MLEngine:
         """Extract features and run inference. Never raises on bad input (§10.4)."""
         if ctx.info.size > ML_MAX_BYTES:
             raise EngineSkipped(
-                Availability.DISABLED,
+                Availability.TOO_LARGE,
                 f"file is {ctx.info.size // (1024 * 1024)} MiB; exceeds the "
-                f"{ML_MAX_BYTES // (1024 * 1024)} MiB ML limit (~160 ms/MiB to extract)",
+                f"{ML_MAX_BYTES // (1024 * 1024)} MiB ML limit (~130 ms/MiB to extract)",
             )
         try:
             return await asyncio.to_thread(self._infer, ctx)
+        except ScanCancelled:
+            raise  # cancellation is control flow, not a parse failure
         except Exception as exc:  # noqa: BLE001 - untrusted binary / model (§10.4)
             log.warning("ml.failed", error=str(exc))
             return [
@@ -98,11 +101,16 @@ class MLEngine:
         from prescan.core.ml.features import PEFeatureExtractor
 
         data = ctx.path.read_bytes()
-        vector = PEFeatureExtractor().feature_vector(data).reshape(1, -1)
+        vector = PEFeatureExtractor().feature_vector(data, ctx.cancel.is_set).reshape(1, -1)
 
         session = self._ensure_session()
         probability = self._run(session, vector)
 
+        # Severity is what the user reads in the signal list, so it must reflect the
+        # probability honestly (a 95% signal shown as INFO would be a lie). It does
+        # NOT drive the verdict: scoring.py excludes source == "ml" from its
+        # no-low-or-worse SAFE gate and decides ML purely from data["probability"]
+        # (escalation §8.2 at 0.70, clearance §8.3 at 0.20 plus signature).
         if probability >= _SUSPICIOUS_PROB:
             severity = Severity.HIGH
         elif probability >= _BENIGN_PROB:

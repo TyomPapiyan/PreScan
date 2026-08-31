@@ -74,19 +74,11 @@ def test_run_extracts_class1_probability(tmp_path: Path) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("malicious", "severity", "weight"),
-    [
-        (0.07, Severity.INFO, 7),
-        (0.45, Severity.LOW, 45),
-        (0.90, Severity.HIGH, 90),
-    ],
+    ("malicious", "severity"),
+    [(0.07, Severity.INFO), (0.45, Severity.LOW), (0.90, Severity.HIGH)],
 )
 async def test_infer_signal_mapping(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    malicious: float,
-    severity: Severity,
-    weight: int,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, malicious: float, severity: Severity
 ) -> None:
     target = tmp_path / "sample.bin"
     target.write_bytes(b"hello world, some content here " * 8)
@@ -98,8 +90,10 @@ async def test_infer_signal_mapping(
     assert len(signals) == 1
     signal = signals[0]
     assert signal.source == "ml"
+    # Severity is an honest tier the user sees; it does NOT gate SAFE (scoring
+    # excludes source == "ml" from no_low_or_worse and uses data["probability"]).
     assert signal.severity is severity
-    assert signal.weight == weight
+    assert signal.weight == round(malicious * 100)
     assert abs(signal.data["probability"] - malicious) < 1e-6
 
 
@@ -112,6 +106,27 @@ async def test_scan_skips_oversized_file(tmp_path: Path) -> None:
     with pytest.raises(EngineSkipped) as excinfo:
         await engine.scan(_ctx(target, tmp_path, size=ML_MAX_BYTES + 1))
     assert "ML limit" in excinfo.value.summary
+    # Same class of situation as the ClamAV size limit -> the same availability.
+    assert excinfo.value.availability is Availability.TOO_LARGE
+
+
+@pytest.mark.asyncio
+async def test_extraction_is_cancellable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A set cancel event aborts feature extraction with ScanCancelled, not a signal."""
+    from prescan.core.errors import ScanCancelled
+
+    target = tmp_path / "big.bin"
+    target.write_bytes(b"MZ" + b"\x00" * 4_000_000)  # large enough to be worth aborting
+    engine = MLEngine(tmp_path / "model.onnx")
+    # The session must never be built: extraction should abort before inference.
+    monkeypatch.setattr(
+        engine, "_ensure_session", lambda: pytest.fail("inference ran despite cancel")
+    )
+    ctx = _ctx(target, tmp_path)
+    ctx.cancel.set()
+
+    with pytest.raises(ScanCancelled):
+        await engine.scan(ctx)
 
 
 @pytest.mark.asyncio

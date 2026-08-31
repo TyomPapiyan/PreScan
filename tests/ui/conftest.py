@@ -62,6 +62,9 @@ else:
         from prescan.ui.app import build_engine
 
         engine, bridge = build_engine()
+        # Environment noise unrelated to QML wiring (§10.1): Windows CI runners
+        # ship no Qt fonts, so QFontDatabase warns. Not a load defect.
+        benign = ("QFontDatabase", "Cannot find font directory", "Qt no longer ships fonts")
         load_warnings = [
             m
             for mode, m in messages
@@ -71,6 +74,7 @@ else:
                 int(QtMsgType.QtCriticalMsg),
                 int(QtMsgType.QtFatalMsg),
             )
+            and not any(token in m for token in benign)
         ]
         yield SimpleNamespace(app=app, engine=engine, bridge=bridge, load_warnings=load_warnings)
         qInstallMessageHandler(None)

@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3AA0FF"/>
+      <stop offset="1" stop-color="#0060DF"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield silhouette: same visual language as the in-app shield mark. -->
+  <path d="M256 40 L432 104 V252 C432 360 360 436 256 472 C152 436 80 360 80 252 V104 Z"
+        fill="url(#shield)"/>
+  <path d="M256 40 L432 104 V252 C432 360 360 436 256 472 C152 436 80 360 80 252 V104 Z"
+        fill="none" stroke="#004AAD" stroke-width="8" stroke-linejoin="round"/>
+  <!-- Magnifier: this app inspects a file, it does not bless it. -->
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round">
+    <circle cx="226" cy="232" r="74" stroke-width="30"/>
+    <line x1="286" y1="292" x2="344" y2="350" stroke-width="34"/>
+  </g>
+</svg>

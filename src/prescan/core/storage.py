@@ -8,6 +8,7 @@ circuits the pipeline with ``from_cache=True`` (§6 stage 3).
 
 from __future__ import annotations
 
+import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -56,23 +57,62 @@ class Storage:
     """SQLite-backed cache and history. Methods are synchronous."""
 
     def __init__(self, db_path: Path) -> None:
+        self._db_path = db_path
         db_path.parent.mkdir(parents=True, exist_ok=True)
         self._engine = create_engine(f"sqlite:///{db_path}", future=True)
         self._migrate()
         Base.metadata.create_all(self._engine)
 
-    def _migrate(self) -> None:
-        """Additive schema migration: add missing columns, never drop data."""
-        from sqlalchemy import inspect, text
+    def _pending_migrations(self) -> list[str]:
+        """Additive-only migration statements needed to update the schema.
+
+        DROP TABLE / DROP COLUMN are forbidden here (CLAUDE.md migration rule):
+        a real incident wiped user history. Only ADD COLUMN / CREATE IF NOT EXISTS.
+        """
+        from sqlalchemy import inspect
 
         inspector = inspect(self._engine)
+        stmts: list[str] = []
         if "history" in inspector.get_table_names():
             columns = {c["name"] for c in inspector.get_columns("history")}
             if "sha256" not in columns:
-                with self._engine.begin() as conn:
-                    conn.execute(
-                        text("ALTER TABLE history ADD COLUMN sha256 VARCHAR(64) DEFAULT ''")
-                    )
+                stmts.append("ALTER TABLE history ADD COLUMN sha256 VARCHAR(64) DEFAULT ''")
+        return stmts
+
+    def _migrate(self) -> None:
+        """Apply pending additive migrations, backing up the DB file first.
+
+        A dated copy (``<db>.bak-<stamp>``) is made before any schema change and
+        removed only on success; a failed migration leaves the backup in place.
+        """
+        from sqlalchemy import text
+
+        statements = self._pending_migrations()
+        if not statements:
+            return
+
+        backup = self._backup_db()
+        try:
+            with self._engine.begin() as conn:
+                for sql in statements:
+                    conn.execute(text(sql))
+        except Exception:
+            log.error("db_migration_failed", backup=str(backup) if backup else None)
+            raise
+        if backup is not None:
+            backup.unlink(missing_ok=True)
+            log.info("db_migration_ok", removed_backup=str(backup))
+
+    def _backup_db(self) -> Path | None:
+        """Copy the DB file next to itself before a migration (None if empty/new)."""
+        if not self._db_path.exists() or self._db_path.stat().st_size == 0:
+            return None
+        self._engine.dispose()  # release the pooled connection before copying
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        backup = self._db_path.with_name(f"{self._db_path.name}.bak-{stamp}")
+        shutil.copy2(self._db_path, backup)
+        log.info("db_backup_created", path=str(backup))
+        return backup
 
     # ---- cache (§6 stage 3) -------------------------------------------- #
     def get_cached(self, sha256: str, *, ttl_days: int) -> ScanReport | None:

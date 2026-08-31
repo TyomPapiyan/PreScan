@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from prescan.core.models import (
     FileInfo,
     ScanReport,
@@ -111,3 +113,48 @@ def test_migration_adds_sha256_without_dropping_rows(tmp_path: Path) -> None:
     # New scans still work against the migrated table.
     storage.add_history(_report("c" * 64, Verdict.DANGEROUS))
     assert len(storage.list_history(limit=10)) == 2
+    # Successful migration leaves no backup behind.
+    assert list(tmp_path.glob("*.bak-*")) == []
+
+
+def _old_schema_db_with_row(db: Path) -> None:
+    import sqlite3
+
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE history ("
+        "id INTEGER PRIMARY KEY, scan_id VARCHAR, target VARCHAR, "
+        "target_kind VARCHAR, verdict VARCHAR, risk_score INTEGER, "
+        "sources VARCHAR, created_at DATETIME)"
+    )
+    conn.execute(
+        "INSERT INTO history (scan_id, target, target_kind, verdict, risk_score, "
+        "sources, created_at) VALUES ('s', '/tmp/old', 'file', 'safe', 0, '', "
+        "'2026-08-01 00:00:00')"
+    )
+    conn.commit()
+    conn.close()
+
+
+def test_failed_migration_keeps_backup_and_data(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A migration that raises must leave a backup copy and the original rows."""
+    import sqlite3
+
+    db = tmp_path / "db.sqlite"
+    _old_schema_db_with_row(db)
+
+    # Force a broken (but still additive-looking) migration statement.
+    monkeypatch.setattr(
+        Storage, "_pending_migrations", lambda self: ["ALTER TABLE nope ADD COLUMN x INT"]
+    )
+    with pytest.raises(Exception):  # noqa: B017 - any DB error is acceptable here
+        Storage(db)
+
+    backups = list(tmp_path.glob("db.sqlite.bak-*"))
+    assert len(backups) == 1, "failed migration must retain the backup"
+    # Original data is intact in the live DB file.
+    conn = sqlite3.connect(db)
+    assert conn.execute("SELECT COUNT(*) FROM history").fetchone()[0] == 1
+    conn.close()

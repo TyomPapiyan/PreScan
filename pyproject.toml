@@ -178,6 +178,8 @@ module = [
     "lief.*",
     "yara_x.*",
     "qasync.*",
+    "pefile.*",
+    "onnxruntime.*",
 ]
 ignore_missing_imports = true
 

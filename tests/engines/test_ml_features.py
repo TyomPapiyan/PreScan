@@ -53,3 +53,40 @@ def test_parity_with_thrember(data: bytes) -> None:
     ref = np.asarray(thrember.PEFeatureExtractor().feature_vector(data), dtype=np.float32)
     assert mine.shape == ref.shape
     assert np.array_equal(mine, ref)
+
+
+def _entropy_probe_buffer(rng: np.random.RandomState, kind: int, n: int) -> bytes:
+    """A 64 KiB buffer with a byte distribution that stresses the entropy binning."""
+    if kind == 0:  # uniform
+        return rng.randint(0, 256, n, dtype=np.uint8).tobytes()
+    if kind == 1:  # heavily skewed toward zero
+        a = np.zeros(n, dtype=np.uint8)
+        idx = rng.randint(0, n, n // 50)
+        a[idx] = rng.randint(0, 256, idx.size)
+        return a.tobytes()
+    if kind == 2:  # repeating blocks
+        blk = rng.randint(0, 256, rng.randint(1, 64), dtype=np.uint8)
+        return np.tile(blk, n // blk.size + 1)[:n].tobytes()
+    if kind == 3:  # pure printable text
+        return rng.randint(0x20, 0x80, n, dtype=np.uint8).tobytes()
+    if kind == 4:  # zeros with rare inserts
+        a = np.zeros(n, dtype=np.uint8)
+        idx = rng.randint(0, n, rng.randint(1, 200))
+        a[idx] = rng.randint(1, 256, idx.size)
+        return a.tobytes()
+    return rng.choice([0, 128, 255], size=n).astype(np.uint8).tobytes()  # bimodal
+
+
+def test_byte_entropy_reduction_parity_randomized() -> None:
+    """The vectorized ByteEntropyHistogram uses terms.sum(axis=1) instead of the
+    scalar np.sum over nonzero bins; a 1-ulp float32 difference would flip an
+    int(H*2) entropy bin silently. Sweep varied distributions to catch that -- one
+    fixed buffer would not."""
+    thrember = pytest.importorskip("thrember")
+    mine, ref = PEFeatureExtractor(), thrember.PEFeatureExtractor()
+    rng = np.random.RandomState(20260901)
+    for i in range(50):
+        data = _entropy_probe_buffer(rng, i % 6, 64 * 1024)
+        a = mine.feature_vector(data)
+        b = np.asarray(ref.feature_vector(data), dtype=np.float32)
+        assert np.array_equal(a, b), f"divergence on buffer {i} (kind {i % 6})"

@@ -12,11 +12,12 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 import structlog
 
 from prescan.core.engines.base import ScanContext
+from prescan.core.errors import EngineSkipped
 from prescan.core.models import Availability, Severity, Signal, SourceKind
 
 if TYPE_CHECKING:
@@ -28,6 +29,11 @@ log = structlog.get_logger(__name__)
 #: §8.3 clearance thresholds live in scoring.py, not here.
 _SUSPICIOUS_PROB = 0.70
 _BENIGN_PROB = 0.20
+
+#: Feature extraction runs at ~160 ms/MiB (measured), so the ml stage is skipped
+#: above this size to keep it within a few seconds (precedent: ClamAV limit §16.9).
+#: The bounded-time budget of §6 row 10 covers files up to this cap.
+ML_MAX_BYTES: Final = 64 * 1024 * 1024
 
 
 class MLEngine:
@@ -66,6 +72,12 @@ class MLEngine:
 
     async def scan(self, ctx: ScanContext) -> list[Signal]:
         """Extract features and run inference. Never raises on bad input (§10.4)."""
+        if ctx.info.size > ML_MAX_BYTES:
+            raise EngineSkipped(
+                Availability.DISABLED,
+                f"file is {ctx.info.size // (1024 * 1024)} MiB; exceeds the "
+                f"{ML_MAX_BYTES // (1024 * 1024)} MiB ML limit (~160 ms/MiB to extract)",
+            )
         try:
             return await asyncio.to_thread(self._infer, ctx)
         except Exception as exc:  # noqa: BLE001 - untrusted binary / model (§10.4)

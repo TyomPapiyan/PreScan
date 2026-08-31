@@ -15,15 +15,16 @@ import numpy as np
 import pytest
 
 from prescan.core.engines.base import ScanContext
-from prescan.core.engines.ml_engine import MLEngine
+from prescan.core.engines.ml_engine import ML_MAX_BYTES, MLEngine
+from prescan.core.errors import EngineSkipped
 from prescan.core.models import Availability, FileInfo, Severity
 
 
-def _ctx(path: Path, workdir: Path) -> ScanContext:
+def _ctx(path: Path, workdir: Path, *, size: int | None = None) -> ScanContext:
     info = FileInfo(
         path=path,
         name=path.name,
-        size=path.stat().st_size,
+        size=path.stat().st_size if size is None else size,
         declared_extension=path.suffix,
         detected_type="data",
         detected_mime="application/octet-stream",
@@ -100,6 +101,17 @@ async def test_infer_signal_mapping(
     assert signal.severity is severity
     assert signal.weight == weight
     assert abs(signal.data["probability"] - malicious) < 1e-6
+
+
+@pytest.mark.asyncio
+async def test_scan_skips_oversized_file(tmp_path: Path) -> None:
+    """Above the size cap the stage is SKIPPED with a clear reason (§16.9 precedent)."""
+    target = tmp_path / "big.bin"
+    target.write_bytes(b"x")  # real bytes tiny; size is faked in the context
+    engine = MLEngine(tmp_path / "model.onnx")
+    with pytest.raises(EngineSkipped) as excinfo:
+        await engine.scan(_ctx(target, tmp_path, size=ML_MAX_BYTES + 1))
+    assert "ML limit" in excinfo.value.summary
 
 
 @pytest.mark.asyncio

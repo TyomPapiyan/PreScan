@@ -23,6 +23,14 @@ def test_main_qml_loads_with_zero_warnings(gui: Any) -> None:
     assert gui.load_warnings == [], f"QML warnings during load: {gui.load_warnings}"
 
 
+def test_availability_text_covers_too_large(gui: Any) -> None:
+    """The size-limit availability must render a real label, never an empty string."""
+    from prescan.core.models import Availability
+
+    text = gui.bridge.availabilityText(Availability.TOO_LARGE.value, "")
+    assert text and text != Availability.TOO_LARGE.value
+
+
 def test_ml_signal_title_shows_percentage(gui: Any) -> None:
     """The ML signal must render its probability as a percentage (DoD M6a)."""
     from prescan.core.models import Severity, Signal, SourceKind

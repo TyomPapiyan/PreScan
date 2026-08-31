@@ -557,6 +557,7 @@ class Bridge(QObject):
             Availability.ERROR.value: "Source temporarily unavailable",
             Availability.UNSUPPORTED_OS.value: "Not available on this OS",
             Availability.DISABLED.value: "Disabled",
+            Availability.TOO_LARGE.value: "File too large for this engine",
         }
         return mapping.get(availability, detail or availability)
 

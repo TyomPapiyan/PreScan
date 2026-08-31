@@ -63,7 +63,7 @@ class ClamAVEngine:
 
         if ctx.info.size > CLAMAV_MAX_BYTES:
             raise EngineSkipped(
-                Availability.ERROR,
+                Availability.TOO_LARGE,
                 f"file exceeds the {CLAMAV_MAX_BYTES // (1024 * 1024)} MiB engine limit",
             )
 

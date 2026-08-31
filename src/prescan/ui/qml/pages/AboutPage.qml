@@ -31,6 +31,7 @@ Item {
             wrapMode: Text.WordWrap
             color: theme.subtext
             textFormat: Text.StyledText
+            linkColor: theme.accent
             onLinkActivated: (link) => Qt.openUrlExternally(link)
             text: qsTr("PySide6 / Qt are used under the LGPLv3. Corresponding source: ")
                 + '<a href="https://download.qt.io/official_releases/QtForPython/">'

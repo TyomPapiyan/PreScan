@@ -81,3 +81,33 @@ def test_clear_history(tmp_path: Path) -> None:
     storage.add_history(_report("a" * 64))
     storage.clear_history()
     assert storage.list_history() == []
+
+
+def test_migration_adds_sha256_without_dropping_rows(tmp_path: Path) -> None:
+    """A pre-sha256 history table must be migrated in place, never dropped."""
+    import sqlite3
+
+    db = tmp_path / "db.sqlite"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE history ("
+        "id INTEGER PRIMARY KEY, scan_id VARCHAR, target VARCHAR, "
+        "target_kind VARCHAR, verdict VARCHAR, risk_score INTEGER, "
+        "sources VARCHAR, created_at DATETIME)"
+    )
+    conn.execute(
+        "INSERT INTO history (scan_id, target, target_kind, verdict, risk_score, "
+        "sources, created_at) VALUES ('s', '/tmp/old', 'file', 'safe', 0, '', "
+        "'2026-08-01 00:00:00')"
+    )
+    conn.commit()
+    conn.close()
+
+    storage = Storage(db)  # runs _migrate()
+
+    rows = storage.list_history(limit=10)
+    assert len(rows) == 1  # existing record preserved, not dropped
+    assert rows[0].target == "/tmp/old"
+    # New scans still work against the migrated table.
+    storage.add_history(_report("c" * 64, Verdict.DANGEROUS))
+    assert len(storage.list_history(limit=10)) == 2

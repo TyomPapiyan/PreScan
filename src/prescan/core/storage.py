@@ -62,7 +62,7 @@ class Storage:
         Base.metadata.create_all(self._engine)
 
     def _migrate(self) -> None:
-        """Light dev migration: drop the history table if it predates a column."""
+        """Additive schema migration: add missing columns, never drop data."""
         from sqlalchemy import inspect, text
 
         inspector = inspect(self._engine)
@@ -70,7 +70,9 @@ class Storage:
             columns = {c["name"] for c in inspector.get_columns("history")}
             if "sha256" not in columns:
                 with self._engine.begin() as conn:
-                    conn.execute(text("DROP TABLE history"))
+                    conn.execute(
+                        text("ALTER TABLE history ADD COLUMN sha256 VARCHAR(64) DEFAULT ''")
+                    )
 
     # ---- cache (§6 stage 3) -------------------------------------------- #
     def get_cached(self, sha256: str, *, ttl_days: int) -> ScanReport | None:

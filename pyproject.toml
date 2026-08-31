@@ -51,6 +51,9 @@ core = [
     "pyzipper==0.4.0",
     "pikepdf==10.12.0",
     "numpy==2.5.2",
+    # pefile is a runtime inference dependency (§3.4: onnxruntime + numpy + pefile),
+    # so it lives in core, not ml.
+    "pefile==2024.8.26",
 ]
 
 # --------------------------------------------------------------------------- #
@@ -68,7 +71,8 @@ ui = [
 # ml: research + model-conversion tooling. Not shipped with the app.
 # --------------------------------------------------------------------------- #
 ml = [
-    "pefile>=2024.8",
+    # pefile is declared in `core` (runtime inference dep, §3.4); the ml tooling
+    # below reuses it.
     "lightgbm==4.7.0",
     "scikit-learn>=1.5",
     "shap>=0.46",

@@ -18,12 +18,18 @@ whenever a dependency is added.
 | py7zr | LGPL-2.1+ | (to add) | https://github.com/miurahr/py7zr |
 | YARA Forge | mixed permissive | (downloaded by user) | https://yaraforge.io/ |
 | Microsoft Defender CLI | Windows EULA | (not distributed) | — |
-| EMBER2024 benchmark model | Apache-2.0 | (to add on M6a) | https://huggingface.co/joyce8/EMBER2024-benchmark-models |
+| EMBER2024 benchmark model | Apache-2.0 | `Apache2-EMBER2024.txt` | https://huggingface.co/joyce8/EMBER2024-benchmark-models |
+| EMBER2024 / thrember (feature code) | Apache-2.0 | `Apache2-EMBER2024.txt` | https://github.com/FutureComputing4AI/EMBER2024 |
 
 ## Notes
 
 - **ClamAV** is never linked (`libclamav`); it is called as the external
   `clamd` process. Binaries are not embedded in the installer (spec §10.2, §11.2).
 - **capa** is called as an external process (`capa --json`), not linked.
+- **EMBER2024**: the shipped `model.onnx` is converted from the Apache-2.0
+  `EMBER2024_all` LightGBM benchmark model. The feature extractor in
+  `core/ml/features.py` and `core/ml/pefile_warnings.txt` are a derivative of the
+  Apache-2.0 `thrember` package (EMBER2024). `model.onnx` itself is downloaded by
+  the user / build step, never committed to the repo (spec §11.2).
 - Full license texts are placeholders on M0 and are completed before the M7
   release build.

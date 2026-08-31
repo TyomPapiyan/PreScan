@@ -22,8 +22,10 @@ Item {
             wrapMode: Text.WordWrap
             color: theme.subtext
             text: qsTr("Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. "
-                + "RinUI (MIT) is vendored in ui/vendor/RinUI. Full licenses are in the "
-                + "licenses/ folder. ClamAV is used as an external process, not linked.")
+                + "RinUI (MIT) is vendored in ui/vendor/RinUI. The malware classifier and "
+                + "its feature extractor derive from the EMBER2024 project (Apache-2.0). "
+                + "Full licenses are in the licenses/ folder. ClamAV is used as an "
+                + "external process, not linked.")
         }
         // LGPLv3 §11.2: link to the corresponding PySide6/Qt sources.
         Label {

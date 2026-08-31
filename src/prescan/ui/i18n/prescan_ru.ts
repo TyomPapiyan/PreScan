@@ -15,16 +15,16 @@
     </message>
     <message>
         <location filename="../qml/pages/AboutPage.qml" line="24"/>
-        <source>Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) is vendored in ui/vendor/RinUI. Full licenses are in the licenses/ folder. ClamAV is used as an external process, not linked.</source>
-        <translation>Собрано на Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) вендорится в ui/vendor/RinUI. Полные лицензии — в папке licenses/. ClamAV вызывается как внешний процесс, без линковки.</translation>
+        <source>Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) is vendored in ui/vendor/RinUI. The malware classifier and its feature extractor derive from the EMBER2024 project (Apache-2.0). Full licenses are in the licenses/ folder. ClamAV is used as an external process, not linked.</source>
+        <translation>Собрано на Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) вендорится в ui/vendor/RinUI. Классификатор вредоносности и его экстрактор признаков основаны на проекте EMBER2024 (Apache-2.0). Полные лицензии — в папке licenses/. ClamAV вызывается как внешний процесс, без линковки.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="35"/>
+        <location filename="../qml/pages/AboutPage.qml" line="38"/>
         <source>PySide6 / Qt are used under the LGPLv3. Corresponding source: </source>
         <translation>PySide6 / Qt используются на условиях LGPLv3. Исходный код: </translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="43"/>
+        <location filename="../qml/pages/AboutPage.qml" line="46"/>
         <source>Google Safe Browsing and the VirusTotal public API are free for non-commercial use only.</source>
         <translation>Google Safe Browsing и публичный API VirusTotal бесплатны только для некоммерческого использования.</translation>
     </message>

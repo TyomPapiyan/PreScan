@@ -15,16 +15,16 @@
     </message>
     <message>
         <location filename="../qml/pages/AboutPage.qml" line="24"/>
-        <source>Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) is vendored in ui/vendor/RinUI. Full licenses are in the licenses/ folder. ClamAV is used as an external process, not linked.</source>
+        <source>Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) is vendored in ui/vendor/RinUI. The malware classifier and its feature extractor derive from the EMBER2024 project (Apache-2.0). Full licenses are in the licenses/ folder. ClamAV is used as an external process, not linked.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="35"/>
+        <location filename="../qml/pages/AboutPage.qml" line="38"/>
         <source>PySide6 / Qt are used under the LGPLv3. Corresponding source: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="43"/>
+        <location filename="../qml/pages/AboutPage.qml" line="46"/>
         <source>Google Safe Browsing and the VirusTotal public API are free for non-commercial use only.</source>
         <translation type="unfinished"></translation>
     </message>

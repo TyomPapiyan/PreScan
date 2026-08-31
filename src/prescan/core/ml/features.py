@@ -25,12 +25,15 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter, OrderedDict
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pefile
 from numpy.typing import NDArray
+
+from prescan.core.errors import ScanCancelled
 
 _MASK = 0xFFFFFFFF
 
@@ -121,21 +124,28 @@ class GeneralFileInfo(FeatureType):
 
     def raw_features(self, bytez: bytes, pe: pefile.PE | None = None) -> Any:
         size = len(bytez)
-        bytez_arr = bytearray(bytez)
-        occurences = Counter(bytez_arr)
+        arr = np.frombuffer(bytez, dtype=np.uint8)
+        # Shannon entropy via a vectorized byte histogram, then the same math.log(x, 2)
+        # sum thrember uses (bit-identical log function). NOTE: thrember accumulates in
+        # Counter's first-appearance order; we accumulate in byte-value order
+        # (np.nonzero). The two are NOT equal in float64 -- they differ by ~1e-15 from
+        # float addition being non-associative. Parity holds ONLY because the result is
+        # stored as float32 (see the hstack in process_raw_features), which rounds the
+        # difference away. Do not rely on exact float64 equality here.
+        counts = np.bincount(arr, minlength=256)
         entropy = 0.0
-        for x in occurences.values():
-            p_x = float(x) / size
+        for v in np.nonzero(counts)[0].tolist():
+            p_x = float(counts[v]) / size
             entropy -= p_x * math.log(p_x, 2)
         return {
             "size": size,
             "entropy": entropy,
             "is_pe": 0 if pe is None else 1,
             "start_bytes": [
-                int(bytez_arr[0]),
-                int(bytez_arr[1]) if size >= 2 else 0,
-                int(bytez_arr[2]) if size >= 3 else 0,
-                int(bytez_arr[3]) if size >= 4 else 0,
+                int(arr[0]),
+                int(arr[1]) if size >= 2 else 0,
+                int(arr[2]) if size >= 3 else 0,
+                int(arr[3]) if size >= 4 else 0,
             ],
         }
 
@@ -189,20 +199,40 @@ class ByteEntropyHistogram(FeatureType):
         return hbin, c
 
     def raw_features(self, bytez: bytes, pe: pefile.PE | None = None) -> Any:
-        output = np.zeros((16, 16), dtype=np.int32)
+        output = np.zeros((16, 16), dtype=np.int64)
         a = np.frombuffer(bytez, dtype=np.uint8)
-        if a.shape[0] < self.window:
+        k = self.window // self.step
+        nc = a.shape[0] // self.step
+        if a.shape[0] < self.window or self.window % self.step != 0 or nc < k:
+            # Small input (or unusual window/step): the original single-block path.
             hbin, c = self._entropy_bin_counts(a)
             output[hbin, :] += c
+            return output.flatten().tolist()
+
+        # Vectorized equivalent of the strided per-block loop. A window of `window`
+        # bytes stepped by `step` is the concatenation of k = window/step adjacent
+        # step-chunks, so per-chunk nibble-hi histograms summed over a k-wide sliding
+        # window reproduce each block's 16-bin histogram exactly.
+        hi = (a[: nc * self.step] >> 4).reshape(nc, self.step)
+        chunk_hist = np.empty((nc, 16), dtype=np.int64)
+        for kbin in range(16):
+            chunk_hist[:, kbin] = (hi == kbin).sum(axis=1)
+        if k == 2:
+            window_hist = chunk_hist[:-1] + chunk_hist[1:]
         else:
-            shape = (*a.shape[:-1], a.shape[-1] - self.window + 1, self.window)
-            strides = (*a.strides, a.strides[-1])
-            blocks = np.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)[
-                :: self.step, :
-            ]
-            for block in blocks:
-                hbin, c = self._entropy_bin_counts(block)
-                output[hbin, :] += c
+            csum = np.cumsum(chunk_hist, axis=0)
+            head = np.zeros((1, 16), dtype=np.int64)
+            window_hist = csum[k - 1 :] - np.vstack([head, csum[:-k]])
+
+        # Per-window entropy in the same float32 order as _entropy_bin_counts.
+        p = window_hist.astype(np.float32) / self.window
+        with np.errstate(divide="ignore", invalid="ignore"):
+            logp = np.log2(p)
+            terms = np.where(window_hist > 0, -p * logp, np.float32(0.0))
+        h = terms.sum(axis=1) * 2
+        hbins = (h * 2).astype(np.int64)
+        hbins[hbins == 16] = 15
+        np.add.at(output, hbins, window_hist)
         return output.flatten().tolist()
 
     def process_raw_features(self, raw_obj: Any) -> NDArray[np.float32]:
@@ -316,8 +346,9 @@ class StringExtractor(FeatureType):
         if allstrings:
             string_lengths = [len(s) for s in allstrings]
             avlength = sum(string_lengths) / len(string_lengths)
-            as_shifted_string = [b - ord(b"\x20") for b in b"".join(allstrings)]
-            c = np.bincount(as_shifted_string, minlength=96)  # histogram count
+            shifted = np.frombuffer(b"".join(allstrings), dtype=np.uint8).astype(np.int64)
+            shifted -= ord(b"\x20")
+            c = np.bincount(shifted, minlength=96)  # histogram count
             # Keep csum as a numpy integer: c.astype(float32) / np.int promotes to
             # float64, which is what thrember does -- casting to a Python int here
             # would silently keep float32 and change the string entropy.
@@ -331,13 +362,29 @@ class StringExtractor(FeatureType):
             h = 0.0
             csum = np.int64(0)
 
+        # Per-regex count of how many *strings* contain a match -- the exact same
+        # per-string semantic as the original O(strings x regexes) loop, not a count
+        # of total matches. Speed comes from scanning each regex once over the strings
+        # joined by "\n": that byte (0x0a) is outside the printable class the strings
+        # are built from and matches none of the patterns (no DOTALL, no class
+        # includes it), so no match can span a join boundary. Each match's start
+        # offset maps to its string via searchsorted, and np.unique collapses multiple
+        # matches in one string to a single count. If you optimize this further, keep
+        # the "distinct strings, no cross-boundary" invariant or the vector drifts.
         string_counts: dict[str, int] = {}
-        for s in allstrings_ascii:
+        if allstrings_ascii:
+            joined = "\n".join(allstrings_ascii)
+            lengths = np.fromiter(
+                (len(s) for s in allstrings_ascii), dtype=np.int64, count=len(allstrings_ascii)
+            )
+            starts = np.empty(len(allstrings_ascii) + 1, dtype=np.int64)
+            starts[0] = 0
+            np.cumsum(lengths + 1, out=starts[1:])
             for k, r in self._regexes.items():
-                if re.search(r, s):
-                    if string_counts.get(k) is None:
-                        string_counts[k] = 0
-                    string_counts[k] += 1
+                positions = [m.start() for m in r.finditer(joined)]
+                if positions:
+                    idxs = np.searchsorted(starts, positions, side="right") - 1
+                    string_counts[k] = int(np.unique(idxs).size)
         ordered_counts = OrderedDict(sorted(string_counts.items()))
 
         return {
@@ -998,7 +1045,9 @@ class PEFeatureExtractor:
         self.features: list[FeatureType] = list(features.values())
         self.dim: int = sum(fe.dim for fe in self.features)
 
-    def raw_features(self, bytez: bytes) -> dict[str, Any]:
+    def raw_features(
+        self, bytez: bytes, should_cancel: Callable[[], bool] | None = None
+    ) -> dict[str, Any]:
         pe: pefile.PE | None = None
         try:
             pe = pefile.PE(data=bytez)
@@ -1006,13 +1055,21 @@ class PEFeatureExtractor:
             pass
         except AttributeError:
             pass
+        # Extraction on a 256 MiB file is ~30 s in a worker thread; check for
+        # cancellation between feature groups so a user's "Cancel" stops the wasted
+        # work promptly instead of after the whole vector is built (CLAUDE.md).
         raw: dict[str, Any] = {}
-        raw.update({fe.name: fe.raw_features(bytez, pe) for fe in self.features})
+        for fe in self.features:
+            if should_cancel is not None and should_cancel():
+                raise ScanCancelled
+            raw[fe.name] = fe.raw_features(bytez, pe)
         return raw
 
     def process_raw_features(self, raw_obj: dict[str, Any]) -> NDArray[np.float32]:
         vectors = [fe.process_raw_features(raw_obj[fe.name]) for fe in self.features]
         return np.hstack(vectors).astype(np.float32)
 
-    def feature_vector(self, bytez: bytes) -> NDArray[np.float32]:
-        return self.process_raw_features(self.raw_features(bytez))
+    def feature_vector(
+        self, bytez: bytes, should_cancel: Callable[[], bool] | None = None
+    ) -> NDArray[np.float32]:
+        return self.process_raw_features(self.raw_features(bytez, should_cancel))

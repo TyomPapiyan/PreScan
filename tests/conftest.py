@@ -13,9 +13,13 @@ import tempfile
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 # Isolate config/data/cache dirs so tests never read or write the real user
-# config, database, quarantine or keyring-adjacent files. platformdirs honours
-# these XDG variables on Linux; must be set before prescan.core.config imports.
+# config, database, quarantine or keyring-adjacent files. Must be set before
+# prescan.core.config imports platformdirs. On Linux platformdirs honours the XDG
+# variables; on Windows it reads APPDATA/LOCALAPPDATA (XDG is ignored there), so
+# both must be redirected or AppConfig.load() lands in the real dev profile.
 _TEST_HOME = tempfile.mkdtemp(prefix="prescan-test-home-")
 os.environ.setdefault("XDG_CONFIG_HOME", os.path.join(_TEST_HOME, "config"))
 os.environ.setdefault("XDG_DATA_HOME", os.path.join(_TEST_HOME, "data"))
 os.environ.setdefault("XDG_CACHE_HOME", os.path.join(_TEST_HOME, "cache"))
+os.environ.setdefault("APPDATA", os.path.join(_TEST_HOME, "AppData", "Roaming"))
+os.environ.setdefault("LOCALAPPDATA", os.path.join(_TEST_HOME, "AppData", "Local"))

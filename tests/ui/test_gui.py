@@ -23,6 +23,30 @@ def test_main_qml_loads_with_zero_warnings(gui: Any) -> None:
     assert gui.load_warnings == [], f"QML warnings during load: {gui.load_warnings}"
 
 
+def test_ml_signal_title_shows_percentage(gui: Any) -> None:
+    """The ML signal must render its probability as a percentage (DoD M6a)."""
+    from prescan.core.models import Severity, Signal, SourceKind
+
+    ml = Signal(
+        source="ml",
+        kind=SourceKind.ML,
+        severity=Severity.HIGH,
+        title_key="signal.ml.assessment",
+        title_en="ML model: 87% likely malicious",
+        data={"probability": 0.87},
+    )
+    assert "87%" in gui.bridge._signal_title(ml)
+    # A non-ML signal keeps its engine-provided English title.
+    other = Signal(
+        source="clamav",
+        kind=SourceKind.LOCAL_ENGINE,
+        severity=Severity.CRITICAL,
+        title_key="signal.clamav.found",
+        title_en="ClamAV detection: X",
+    )
+    assert gui.bridge._signal_title(other) == "ClamAV detection: X"
+
+
 def test_dict_list_model_count_is_a_bindable_property(gui: Any) -> None:
     """count must be a Property (empty-state bindings use it, not rowCount())."""
     from prescan.ui.models_qml import DictListModel

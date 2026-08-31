@@ -219,7 +219,7 @@ class Bridge(QObject):
                 {
                     "source": s.source,
                     "severity": s.severity.value,
-                    "title": s.title_en,
+                    "title": self._signal_title(s),
                     "detail": s.detail,
                     "weight": s.weight,
                     "mitre": ", ".join(s.mitre),
@@ -228,6 +228,21 @@ class Bridge(QObject):
             ]
         )
         self.resultChanged.emit()
+
+    def _signal_title(self, s: Any) -> str:
+        """Localised, human-readable signal title for the result screen.
+
+        The ML signal is the one DoD requires visible and translated (e.g.
+        "ML-модель: 87% вероятность вредоносности"); its percentage is read from
+        the signal payload so the text is built in the active UI language.
+        """
+        if s.source == "ml":
+            probability = s.data.get("probability")
+            if probability is not None:
+                pct = round(float(probability) * 100)
+                return self.tr("ML model: %1% likely malicious").replace("%1", str(pct))
+            return self.tr("ML model could not score the file")
+        return str(s.title_en)
         self.loadHistory()
 
     @Slot()

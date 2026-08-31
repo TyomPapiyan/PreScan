@@ -30,6 +30,20 @@
     </message>
 </context>
 <context>
+    <name>Bridge</name>
+    <message>
+        <location filename="../bridge.py" line="243"/>
+        <source>ML model: %1% likely malicious</source>
+        <extracomment>URL-scan sources that receive the FULL URL, vs Safe Browsing (hash-prefix).</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="244"/>
+        <source>ML model could not score the file</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>HistoryPage</name>
     <message>
         <location filename="../qml/pages/HistoryPage.qml" line="25"/>

@@ -30,6 +30,19 @@
     </message>
 </context>
 <context>
+    <name>Bridge</name>
+    <message>
+        <location filename="../bridge.py" line="243"/>
+        <source>ML model: %1% likely malicious</source>
+        <translation>ML-модель: %1% вероятность вредоносности</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="244"/>
+        <source>ML model could not score the file</source>
+        <translation>ML-модель не смогла оценить файл</translation>
+    </message>
+</context>
+<context>
     <name>HistoryPage</name>
     <message>
         <location filename="../qml/pages/HistoryPage.qml" line="25"/>

@@ -10,11 +10,13 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import (
+    Property,
     QAbstractListModel,
     QByteArray,
     QModelIndex,
     QPersistentModelIndex,
     Qt,
+    Signal,
 )
 
 _Index = QModelIndex | QPersistentModelIndex
@@ -24,11 +26,18 @@ _ROOT = QModelIndex()
 class DictListModel(QAbstractListModel):
     """A list model over a list of dicts, one role per given key."""
 
+    countChanged = Signal()
+
     def __init__(self, roles: list[str], parent: Any | None = None) -> None:
         super().__init__(parent)
         self._rows: list[dict[str, Any]] = []
         # Custom roles start after Qt.UserRole.
         self._role_names = {Qt.ItemDataRole.UserRole + i: key for i, key in enumerate(roles)}
+
+    @Property(int, notify=countChanged)
+    def count(self) -> int:
+        """Row count as a bindable property (rowCount() is a method, not one)."""
+        return len(self._rows)
 
     def roleNames(self) -> dict[int, QByteArray]:
         return {role: QByteArray(key.encode()) for role, key in self._role_names.items()}
@@ -51,6 +60,7 @@ class DictListModel(QAbstractListModel):
         self.beginResetModel()
         self._rows = list(rows)
         self.endResetModel()
+        self.countChanged.emit()
 
     def upsert(self, key_field: str, row: dict[str, Any]) -> None:
         """Insert or update a row identified by row[key_field] (live progress)."""
@@ -64,6 +74,7 @@ class DictListModel(QAbstractListModel):
         self.beginInsertRows(QModelIndex(), len(self._rows), len(self._rows))
         self._rows.append(row)
         self.endInsertRows()
+        self.countChanged.emit()
 
     def clear(self) -> None:
         self.replace([])

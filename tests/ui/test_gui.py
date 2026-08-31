@@ -23,6 +23,22 @@ def test_main_qml_loads_with_zero_warnings(gui: Any) -> None:
     assert gui.load_warnings == [], f"QML warnings during load: {gui.load_warnings}"
 
 
+def test_dict_list_model_count_is_a_bindable_property(gui: Any) -> None:
+    """count must be a Property (empty-state bindings use it, not rowCount())."""
+    from prescan.ui.models_qml import DictListModel
+
+    model = DictListModel(["a"])
+    seen: list[int] = []
+    model.countChanged.connect(lambda: seen.append(model.property("count")))
+
+    assert model.property("count") == 0
+    model.replace([{"a": "1"}, {"a": "2"}])
+    assert model.property("count") == 2
+    model.clear()
+    assert model.property("count") == 0
+    assert seen == [2, 0]  # signal fired on each change
+
+
 def _big_sparse_file(path: Path, size: int) -> Path:
     with path.open("wb") as fh:
         fh.truncate(size)

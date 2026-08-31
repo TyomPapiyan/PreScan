@@ -46,7 +46,7 @@ Item {
         spacing: 12
         Label { text: qsTr("Quarantine"); color: theme.text; font.pixelSize: 22; font.bold: true }
         Label {
-            visible: Bridge.quarantineModel.rowCount === 0
+            visible: Bridge.quarantineModel.count === 0
             text: qsTr("Quarantine is empty.")
             color: theme.subtext
         }

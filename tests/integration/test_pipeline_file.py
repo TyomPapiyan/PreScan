@@ -82,3 +82,44 @@ async def test_cancelled_scan_is_unknown(tmp_path: Path) -> None:
     report = await Pipeline(AppConfig.load()).run(request, cancel=cancel)
     assert report.verdict is Verdict.UNKNOWN
     assert report.incomplete is True
+
+
+@pytest.mark.asyncio
+async def test_engine_scancancelled_is_cancelled_not_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A ScanCancelled raised inside an engine must surface as a CANCELLED stage.
+
+    It is a plain Exception (so it survives to_thread), so it lands in gather's
+    results; without explicit handling the pipeline would record it as an engine
+    FAILURE. Force that path by having the only engine raise it with cancel unset,
+    so gather completes and classifies the outcome."""
+    from prescan.core.engines.base import ScanContext
+    from prescan.core.errors import ScanCancelled
+    from prescan.core.models import Availability, SourceKind
+
+    class _CancellingEngine:
+        name = "ml"
+        kind = SourceKind.ML
+        stage_id = "ml"
+
+        async def availability(self) -> tuple[Availability, str]:
+            return Availability.READY, "ok"
+
+        async def scan(self, ctx: ScanContext) -> list[object]:
+            raise ScanCancelled
+
+    monkeypatch.setattr(
+        "prescan.core.pipeline.build_engines", lambda _config, _paths: [_CancellingEngine()]
+    )
+
+    target = tmp_path / "blob.bin"
+    target.write_bytes(b"content" * 100)
+    request = ScanRequest(target_kind=TargetKind.FILE, file_path=target, allow_network=False)
+    report = await Pipeline(AppConfig.load()).run(request)
+
+    ml_stage = next(s for s in report.stages if s.stage_id == "ml")
+    assert ml_stage.status is StageStatus.CANCELLED
+    assert ml_stage.status is not StageStatus.FAILED
+    assert ml_stage.error is None
+    assert "ml" in report.unavailable_sources

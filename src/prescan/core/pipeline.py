@@ -341,7 +341,11 @@ class Pipeline:
                 st.availability = Availability(outcome.availability)
                 st.summary = outcome.summary
                 unavailable.append(engine.name)
-            elif isinstance(outcome, asyncio.CancelledError):
+            elif isinstance(outcome, asyncio.CancelledError | ScanCancelled):
+                # ScanCancelled is a plain Exception (it must survive to_thread), so
+                # it lands in gather's results rather than propagating; without this
+                # branch it would fall through to BaseException and be recorded as an
+                # engine FAILURE instead of a cancellation.
                 st.status = StageStatus.CANCELLED
                 st.summary = "cancelled"
                 unavailable.append(engine.name)

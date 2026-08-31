@@ -70,7 +70,7 @@ class Availability(StrEnum):
     OFFLINE = "offline"
     UNSUPPORTED_OS = "unsupported_os"
     DISABLED = "disabled"  # switched off by the user
-    TOO_LARGE = "too_large"  # file exceeds an engine's size limit (§16.9, §16.13)
+    TOO_LARGE = "too_large"  # file exceeds an engine's size limit (§16.9)
     ERROR = "error"
 
 

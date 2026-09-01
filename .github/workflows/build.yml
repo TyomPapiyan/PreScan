@@ -254,7 +254,7 @@ jobs:
           sha256sum prescan_*_amd64.deb PreScan-*-x86_64.AppImage PreScan-Setup-*.exe > SHA256SUMS
           echo "== release/ =="; ls -l; echo "== SHA256SUMS =="; cat SHA256SUMS
 
-      - name: Create or update the GitHub release
+      - name: Create the GitHub release (never overwrite published assets)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -268,13 +268,25 @@ jobs:
             release/PreScan-Setup-*.exe
             release/SHA256SUMS
           )
-          # Idempotent: a re-run of the tag build must not fail on an existing
-          # release. Refresh notes/title and re-upload assets (--clobber) instead.
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            echo "release ${GITHUB_REF_NAME} exists -> update notes and re-upload assets"
-            gh release edit "${GITHUB_REF_NAME}" --title "PreScan ${ver}" --notes-file "$notes"
-            gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
-          else
-            gh release create "${GITHUB_REF_NAME}" \
-              --title "PreScan ${ver}" --notes-file "$notes" "${files[@]}"
+            # A re-run of the same tag must be a safe no-op. PyInstaller is not
+            # reproducible, so this run built different bytes; re-uploading would
+            # replace published files whose hashes are frozen in the release's own
+            # SHA256SUMS, breaking every downloader's `sha256sum -c`. So never
+            # replace a published asset -- only verify the set is complete.
+            published=$(gh release view "${GITHUB_REF_NAME}" --json assets --jq '.assets[].name')
+            missing=()
+            for f in "${files[@]}"; do
+              name=$(basename "$f")
+              grep -qxF "$name" <<<"$published" || missing+=("$name")
+            done
+            if [ "${#missing[@]}" -eq 0 ]; then
+              echo "release ${GITHUB_REF_NAME} already complete (4 assets present); nothing changed."
+              exit 0
+            fi
+            echo "::error::release ${GITHUB_REF_NAME} exists but is missing: ${missing[*]}"
+            echo "published assets are never overwritten (non-reproducible build); resolve manually."
+            exit 1
           fi
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "PreScan ${ver}" --notes-file "$notes" "${files[@]}"

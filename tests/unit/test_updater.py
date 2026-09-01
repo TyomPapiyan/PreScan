@@ -11,7 +11,13 @@ import pytest
 import respx
 
 from prescan.core.errors import UpdateError
-from prescan.core.updater import YARA_FORGE_FULL_URL, update_yara_rules
+from prescan.core.updater import (
+    MODEL_SHA256,
+    MODEL_URL,
+    YARA_FORGE_FULL_URL,
+    update_model,
+    update_yara_rules,
+)
 
 
 def _rules_zip() -> bytes:
@@ -38,6 +44,32 @@ async def test_update_raises_on_http_error(tmp_path: Path) -> None:
     respx.get(YARA_FORGE_FULL_URL).mock(return_value=httpx.Response(500))
     with pytest.raises(UpdateError):
         await update_yara_rules(tmp_path / "yara", timeout_s=30)
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_update_model_verifies_checksum(tmp_path: Path) -> None:
+    import hashlib
+
+    payload = b"fake onnx bytes for the test"
+    sha = hashlib.sha256(payload).hexdigest()
+    respx.get(MODEL_URL).mock(return_value=httpx.Response(200, content=payload))
+    dest = tmp_path / "model.onnx"
+    result = await update_model(dest, expected_sha256=sha, timeout_s=30)
+    assert result == dest
+    assert dest.read_bytes() == payload
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_update_model_rejects_bad_checksum_without_clobbering(tmp_path: Path) -> None:
+    respx.get(MODEL_URL).mock(return_value=httpx.Response(200, content=b"tampered payload"))
+    dest = tmp_path / "model.onnx"
+    dest.write_bytes(b"the existing good model")
+    with pytest.raises(UpdateError, match="checksum mismatch"):
+        await update_model(dest, expected_sha256=MODEL_SHA256, timeout_s=30)
+    # A bad download must never replace a good classifier.
+    assert dest.read_bytes() == b"the existing good model"
 
 
 class _FakeClient:

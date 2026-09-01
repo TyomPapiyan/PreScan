@@ -11,6 +11,7 @@ capa rule download is deferred from the first version and not implemented here.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -34,6 +35,54 @@ log = structlog.get_logger(__name__)
 YARA_FORGE_FULL_URL: Final = (
     "https://github.com/YARAHQ/yara-forge/releases/latest/download/yara-forge-rules-full.zip"
 )
+
+#: The EMBER2024 classifier, delivered as a GitHub Release asset (§3.4, §11.2): the
+#: model is never committed to the repo, the app downloads the prebuilt ONNX. The
+#: SHA-256 is pinned here and verified after download -- this is the classifier's
+#: executable logic, so a corrupted or swapped file must never be installed.
+MODEL_URL: Final = (
+    "https://github.com/TyomPapiyan/PreScan/releases/download/model-ember2024-v1/model.onnx"
+)
+MODEL_SHA256: Final = "59684b32266bbd21a82070d9f67e0c4d9298a622a3fb6d9dd1dacecb979a8044"
+
+
+def _sha256_file(path: Path) -> str:
+    """Streaming SHA-256 of a file (models are a few MiB)."""
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+async def update_model(
+    model_path: Path,
+    *,
+    url: str = MODEL_URL,
+    expected_sha256: str = MODEL_SHA256,
+    timeout_s: float = 300.0,
+) -> Path:
+    """Download ``model.onnx`` into the data dir, verifying its SHA-256.
+
+    Raises :class:`UpdateError` on any network failure or checksum mismatch. On a
+    mismatch the downloaded file is discarded and an existing model is left intact,
+    so a bad download can never replace a good classifier.
+    """
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="prescan-model-") as tmp:
+        tmpfile = Path(tmp) / "model.onnx"
+        try:
+            await _download(url, tmpfile, timeout_s=timeout_s)
+        except (httpx.HTTPError, OSError) as exc:
+            raise UpdateError(f"Model download failed: {exc}") from exc
+
+        digest = _sha256_file(tmpfile)
+        if digest != expected_sha256:
+            raise UpdateError(f"Model checksum mismatch: expected {expected_sha256}, got {digest}")
+        shutil.move(str(tmpfile), str(model_path))
+
+    log.info("model.installed", path=str(model_path), sha256=expected_sha256)
+    return model_path
 
 
 @retry(

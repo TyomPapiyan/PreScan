@@ -66,10 +66,14 @@ jobs:
             echo "libQt6*.so.6 count: $(find dist/PreScan -name 'libQt6*.so.6' | wc -l)"
           fi
 
-      # ---- Linux: .deb + closed-loop in a clean container ------------------ #
+      # ---- Linux: .deb + AppImage + closed-loop in a clean container ------- #
       - name: Build .deb
         if: runner.os == 'Linux'
         run: bash packaging/build-deb.sh
+
+      - name: Build AppImage
+        if: runner.os == 'Linux'
+        run: bash packaging/build-appimage.sh
 
       - name: Prove licenses/ ships inside the .deb (§11.5)
         if: runner.os == 'Linux'

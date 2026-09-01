@@ -47,6 +47,7 @@ Priority: optional
 Architecture: amd64
 Maintainer: PreScan
 Installed-Size: ${size_kb}
+Depends: libc6, libgl1, libglib2.0-0t64, libegl1, libxkbcommon0, libdbus-1-3
 Description: Pre-execution file & link malware scanner
  PreScan checks a file for malware before you run it and inspects a link before
  you download it. Not an antivirus; verdicts are informational.

@@ -220,3 +220,52 @@ jobs:
           name: prescan-windows-${{ steps.ver.outputs.v }}
           path: |
             dist/PreScan-Setup-*.exe
+
+  # Publish the GitHub release from the runner, where both artifacts already live
+  # -- no round-trip through a developer's uplink. Tag-only, and only after both
+  # build legs succeed, so a release can never appear without its binaries.
+  publish:
+    name: publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7  # for docs/release-notes/<tag>.md
+
+      - name: Download both build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Collect the three packages and checksum them
+        run: |
+          set -e
+          mkdir -p release
+          find artifacts -type f \( \
+            -name 'prescan_*_amd64.deb' -o \
+            -name 'PreScan-*-x86_64.AppImage' -o \
+            -name 'PreScan-Setup-*.exe' \) -exec cp {} release/ \;
+          cd release
+          n=$(ls -1 | wc -l)
+          [ "$n" -eq 3 ] || { echo "::error::expected 3 packages, found $n"; ls -la; exit 1; }
+          # Checksums over the exact files being uploaded (names only, no paths).
+          sha256sum prescan_*_amd64.deb PreScan-*-x86_64.AppImage PreScan-Setup-*.exe > SHA256SUMS
+          echo "== release/ =="; ls -l; echo "== SHA256SUMS =="; cat SHA256SUMS
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          ver="${GITHUB_REF_NAME#v}"
+          notes="docs/release-notes/v${ver}.md"
+          [ -f "$notes" ] || { echo "::error::missing $notes"; exit 1; }
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "PreScan ${ver}" \
+            --notes-file "$notes" \
+            release/prescan_*_amd64.deb \
+            release/PreScan-*-x86_64.AppImage \
+            release/PreScan-Setup-*.exe \
+            release/SHA256SUMS

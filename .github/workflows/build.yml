@@ -109,17 +109,24 @@ jobs:
           $v = (& uv run prescan version).Trim() -replace '^PreScan\s+',''
           iscc "/DAppVersion=$v" packaging\prescan.iss
 
-      - name: Closed-loop with a trimmed PATH (approximation — Python is installed)
+      - name: Closed-loop from the INSTALLED package on Windows (§12)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # Drop the runner's Python dirs from PATH so the frozen exe uses only its
-          # own bundled runtime. This is an approximation: Python is still installed
-          # on the runner, so §12 "runs on clean Windows without Python" is not fully
-          # proven here — only that the exe does not depend on the runner's Python.
+          # §12: install the Inno package silently, then run the installed exe from
+          # Program Files with the runner's Python dirs stripped from PATH, then
+          # uninstall silently. Caveat (stated in the report): Python is still present
+          # on the runner, so a truly virgin Windows is NOT proven -- only that the
+          # installed package runs without depending on the runner's Python.
+          $setup = (Get-ChildItem dist\PreScan-Setup-*.exe)[0].FullName
+          Start-Process -FilePath $setup -ArgumentList '/VERYSILENT','/NORESTART' -Wait
+          $app = "C:\Program Files\PreScan"
+          Write-Host "== installed licenses (§11.5) =="; Get-ChildItem "$app\licenses" | Select-Object -First 5 Name
           $env:PATH = "C:\Windows\System32;C:\Windows"
-          & dist\PreScan\prescan.exe version
-          & dist\PreScan\prescan.exe engines
+          & "$app\prescan.exe" version
+          & "$app\prescan.exe" engines
+          Start-Process -FilePath "$app\unins000.exe" -ArgumentList '/VERYSILENT' -Wait
+          Write-Host "uninstalled: $(-not (Test-Path $app))"
 
       # ---- Artifacts ------------------------------------------------------- #
       - name: Upload Linux artifacts

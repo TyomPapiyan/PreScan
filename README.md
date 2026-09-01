@@ -76,19 +76,19 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 - A verdict with a `risk_score` and the ranked signals behind it.
 - **Quarantine** a dangerous file into an AES-encrypted zip (password `infected`), then
   `list` / `restore` / `purge` it.
-- **History** of past scans, and reports exported as **JSON** or **HTML** (PDF from the GUI).
+- **History** of past scans, and reports exported as **JSON** or **HTML**.
 
 ### 🧩 Everything else
 - **Bilingual** 🇷🇺 / 🇬🇧 GUI, switchable at runtime.
 - **API keys in the OS keyring** — never in the repo, config, logs or reports.
 - **No telemetry** — only what a scan explicitly needs leaves the machine, and you can see
-  which source receives what on the Privacy screen.
+  which source receives what in the Privacy section of Settings.
 
 ## 🛠️ Tech stack
 
 | Area | Technology |
 |---|---|
-| Language | Python 3.12+ (3.12 / 3.13) |
+| Language | Python 3.12+ |
 | Desktop GUI | [PySide6](https://doc.qt.io/qtforpython/) (Qt Quick / QML) · RinUI (Fluent / WinUI 3, vendored) · [qasync](https://github.com/CabbageDevelopment/qasync) |
 | CLI | [Typer](https://typer.tiangolo.com/) |
 | Signatures | [YARA-X](https://virustotal.github.io/yara-x/) |
@@ -101,7 +101,7 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 | Database | [SQLAlchemy 2.0](https://www.sqlalchemy.org/) async + SQLite |
 | Config & secrets | [pydantic](https://docs.pydantic.dev/) · [keyring](https://github.com/jaraco/keyring) |
 | Logging | [structlog](https://www.structlog.org/) (JSON in prod, colored in dev) |
-| Reports | [Jinja2](https://jinja.palletsprojects.com/) (HTML) · Qt `QPdfWriter` (PDF) |
+| Reports | JSON · [Jinja2](https://jinja.palletsprojects.com/) (HTML) |
 | Packaging | [PyInstaller](https://pyinstaller.org/) `--onedir` → `.deb` · AppImage · Inno Setup |
 | Quality | ruff · mypy · pytest · respx · GitHub Actions CI |
 
@@ -197,11 +197,13 @@ does not affect this download: the model lives in its own pinned release, checke
 
 ## 🔑 API keys
 
-The cloud sources are optional and each stays off until you add its key: VirusTotal,
-MetaDefender, MalwareBazaar, Google Safe Browsing, and urlscan. Add them in
-**Settings → API keys**; keys are stored in the OS **keyring**, never in the repository,
-config files, logs or reports. See [`.env.example`](.env.example) for the provider list and
-where to obtain each key.
+The cloud sources are optional and each stays off until you add its key. There are five
+configurable keys: **VirusTotal**, **MetaDefender**, **MalwareBazaar**, **Google Safe
+Browsing**, and **urlscan**. The MalwareBazaar key is your **abuse.ch** account key, and the
+same key also enables **ThreatFox** and **URLhaus** (all three are abuse.ch services). Add
+them in **Settings → API keys**; keys are stored in the OS **keyring**, never in the
+repository, config files, logs or reports. See [`.env.example`](.env.example) for the
+provider list and where to obtain each key.
 
 > **Non-commercial note:** the **Google Safe Browsing** and **VirusTotal Public** APIs are
 > free for **non-commercial use only**.
@@ -251,8 +253,8 @@ tests/                        # unit, engines, providers, integration, ui
 
 - The inspected file is **never executed** — only read and parsed as data.
 - On a `--no-network` run nothing leaves your machine. Otherwise only what a source needs is
-  sent, and the Privacy screen shows which URL sources receive the full URL versus a hash
-  prefix (Safe Browsing).
+  sent, and the Privacy section of Settings shows which URL sources receive the full URL
+  versus a hash prefix (Safe Browsing).
 - API keys live in the OS keyring; `structlog` is configured to redact key values from logs.
 
 ## 🧑‍💻 Development
@@ -273,6 +275,11 @@ Cutting a release is scripted end-to-end from CI; the step-by-step is in
 Released under the **MIT License** — see [`LICENSE`](LICENSE). The full texts of every
 third-party component's license are collected in [`licenses/`](licenses/) and ship inside
 **every distribution**, next to the executable.
+
+**PySide6 and Qt** are distributed under the **LGPLv3**. In a release build the Qt libraries
+ship as **separate, replaceable files next to the executable**, so they can be swapped for a
+compatible build — the LGPL relinking right. Their source is available at
+<https://download.qt.io/official_releases/QtForPython/>.
 
 ## 🗺️ Roadmap
 

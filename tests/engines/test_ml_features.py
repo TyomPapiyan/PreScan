@@ -239,17 +239,24 @@ def test_parity_with_thrember_signed_binary() -> None:
         if np.array_equal(ref[auth], zeros_auth):
             continue  # signify could not parse this cert -> not a meaningful signed case
         mine = ext.feature_vector(data)
+        diverged = np.flatnonzero(mine != ref)
         warnings.warn(
             f"signed-PE parity: REAL signify; binary={path} ({len(data)} bytes); "
-            f"ours[auth]={mine[auth].tolist()} ref[auth]={ref[auth].tolist()}",
+            f"ours[auth]={mine[auth].tolist()} ref[auth]={ref[auth].tolist()}; "
+            f"diverged dims (whole 2568 vector)={diverged.size} at {diverged.tolist()} "
+            f"(must all be inside the authenticode block [{auth.start}:{auth.stop}])",
             stacklevel=1,
         )
         mask = np.ones(mine.shape[0], dtype=bool)
         mask[auth] = False
         assert np.array_equal(mine[mask], ref[mask]), (
             "divergence OUTSIDE the 8 Authenticode dims on a signed PE -- the pefile "
-            "rewrite disagrees with thrember somewhere it must not"
+            f"rewrite disagrees with thrember at {diverged.tolist()} (auth is "
+            f"[{auth.start}:{auth.stop}]); it must not"
         )
+        # Every diverged dim must fall inside the 8-dim authenticode block -> at most 8.
+        assert diverged.size <= auth.stop - auth.start
+        assert set(diverged.tolist()) <= set(range(auth.start, auth.stop))
         # Our documented §3.4 approximation: the 8 Authenticode dims stay zero.
         assert np.array_equal(mine[auth], zeros_auth)
         # The reference really parsed a signature (guaranteed by the selection above),

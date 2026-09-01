@@ -4,10 +4,11 @@
 ; and shortcuts use prescan.ico. Build with:  ISCC packaging\prescan.iss
 
 #define AppName "PreScan"
-; Version comes from the single source (src/prescan/__init__.py) at build time via
-;   ISCC /DAppVersion=<version>.  The fallback below is only for a bare local run.
+; Version is the single source (src/prescan/__init__.py), passed in at build time via
+;   ISCC /DAppVersion=<version>.  Fail loudly rather than ship an installer with a
+;   stale hard-coded number if it is missing.
 #ifndef AppVersion
-  #define AppVersion "0.0.0-dev"
+  #error AppVersion is not set -- build with: ISCC /DAppVersion=<version> packaging\prescan.iss
 #endif
 #define AppExe "prescan.exe"
 

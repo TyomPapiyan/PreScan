@@ -31,6 +31,9 @@ PrivilegesRequiredOverridesAllowed=dialog
 [Files]
 ; Recurse the whole --onedir bundle; every Qt6*.dll stays a separate file here.
 Source: "..\dist\PreScan\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; licenses/ pulled straight from the repo (§11.5) so the installer always ships them,
+; independent of any pre-staging step in the workflow.
+Source: "..\licenses\*"; DestDir: "{app}\licenses"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\{#AppExe}"

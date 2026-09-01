@@ -24,6 +24,9 @@ mkdir -p "$appdir/usr/bin" "$appdir/usr/share/applications" \
 
 # The whole onedir bundle under usr/bin; AppRun launches it.
 cp -a "$bundle" "$appdir/usr/bin/PreScan"
+# licenses/ ship inside the image (§11.5); done here, not in the workflow, so a
+# distribution without licenses cannot be built.
+cp -r "$root/licenses" "$appdir/usr/bin/PreScan/licenses"
 cat > "$appdir/AppRun" <<'EOF'
 #!/bin/bash
 HERE="$(dirname "$(readlink -f "$0")")"

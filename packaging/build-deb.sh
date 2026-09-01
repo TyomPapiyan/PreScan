@@ -13,7 +13,7 @@ root="$(cd "$here/.." && pwd)"
 bundle="${1:-$root/dist/PreScan}"
 outdir="${2:-$root/dist}"
 # Single source of truth: __version__ in src/prescan/__init__.py (pyproject is dynamic).
-version="$(cd "$root" && python -c 'import re,pathlib; print(re.search(r"__version__ = \"([^\"]+)\"", pathlib.Path("src/prescan/__init__.py").read_text()).group(1))')"
+version="$(python3 -c 'import re,pathlib; print(re.search(r"__version__ = \"([^\"]+)\"", pathlib.Path("'"$root"'/src/prescan/__init__.py").read_text()).group(1))')"
 
 [ -x "$bundle/prescan" ] || { echo "bundle not found: $bundle (run pyinstaller first)"; exit 1; }
 

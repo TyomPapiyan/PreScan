@@ -48,14 +48,12 @@ jobs:
       - name: Build the --onedir bundle (PyInstaller)
         run: uv run pyinstaller prescan.spec --noconfirm --distpath dist --workpath build
 
-      - name: Stage licenses next to the executable (§11.5)
-        shell: bash
-        run: cp -r licenses dist/PreScan/licenses
-
       - name: List bundle root + separate Qt libraries (§11.2 row 4, §11.3)
+        # licenses/ are added by each packaging script (build-deb.sh, build-appimage.sh,
+        # prescan.iss), not staged here -- a distribution without them cannot be built.
         shell: bash
         run: |
-          echo "== bundle root (licenses/ must be here, next to the exe) =="
+          echo "== bundle root =="
           ls -la dist/PreScan
           echo "== separate Qt libraries =="
           if [ "${{ runner.os }}" = "Windows" ]; then

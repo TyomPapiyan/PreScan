@@ -38,6 +38,24 @@ jobs:
           uv venv --python 3.12 .venv
           uv pip install -e ".[core,ui,dev]"
 
+      # Point the app data dir at a fixed path both here and in pytest. conftest.py
+      # isolates dirs with os.environ.setdefault, so a value set now is kept: the
+      # model downloaded below lands where the tests look for it, turning
+      # test_signed_binary_clears_to_safe_with_model from a skip into a real check.
+      - name: Pin app data dir for the model + tests
+        shell: bash
+        run: |
+          home="${RUNNER_TEMP}/prescan-data"
+          mkdir -p "$home"
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            echo "LOCALAPPDATA=$home" >> "$GITHUB_ENV"
+          else
+            echo "XDG_DATA_HOME=$home" >> "$GITHUB_ENV"
+          fi
+
+      - name: Download ML model (real release asset, SHA-256 verified)
+        run: uv run prescan update-model
+
       - name: Ruff lint
         run: uv run ruff check .
 

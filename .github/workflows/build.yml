@@ -12,7 +12,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Pinned, not -latest: release binaries link against the runner's glibc, so
+        # the moment GitHub moves ubuntu-latest to a newer glibc the artifacts would
+        # silently stop installing on Ubuntu 24.04. ubuntu-24.04 (glibc 2.39) fixes the
+        # minimum supported target; ci.yml keeps -latest where it is harmless.
+        os: [ubuntu-24.04, windows-2022]
 
     steps:
       - uses: actions/checkout@v4

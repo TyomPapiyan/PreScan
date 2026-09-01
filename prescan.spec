@@ -16,8 +16,26 @@ Compile the ``.qm`` files before building:
     pyside6-lrelease src/prescan/ui/i18n/prescan_en.ts -qm src/prescan/ui/i18n/prescan_en.qm
 """
 
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
 ENTRY_SCRIPT = "packaging/pyinstaller_entry.py"
 ICON = "src/prescan/resources/icons/prescan.ico"
+
+# Compile the translations here too (build.yml also runs this) so the .qm files —
+# which are git-ignored — always exist when the i18n dir is bundled below. Without
+# them the shipped app has no RU/EN switch (§12), i.e. dead i18n. Look for lrelease
+# next to the interpreter first (venv bin), then on PATH.
+_bindir = Path(sys.executable).parent
+_lrelease = next(
+    (str(_bindir / n) for n in ("pyside6-lrelease", "pyside6-lrelease.exe") if (_bindir / n).exists()),
+    shutil.which("pyside6-lrelease"),
+)
+if _lrelease:
+    for _ts in Path("src/prescan/ui/i18n").glob("*.ts"):
+        subprocess.run([_lrelease, str(_ts), "-qm", str(_ts.with_suffix(".qm"))], check=True)
 
 # The automatic PySide6 hook collects every Qt module it can; exclude the big ones
 # the app never touches (WebEngine alone is ~300 MB) so the bundle is a few hundred

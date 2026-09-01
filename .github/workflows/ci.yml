@@ -68,6 +68,21 @@ jobs:
       - name: Mypy (Windows platform)
         run: uv run mypy --platform win32 src/
 
+      # §13.1: EICAR is a mandatory smoke test and must not pass silently by being
+      # skipped. Bring up clamd on Linux so the test actually runs (-> DANGEROUS).
+      - name: Bring up ClamAV daemon (for the EICAR smoke test, §13.1)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clamav clamav-daemon
+          sudo systemctl stop clamav-freshclam || true
+          sudo freshclam || true
+          sudo install -d -o clamav -g clamav /var/run/clamav
+          sudo systemctl restart clamav-daemon || sudo service clamav-daemon restart || true
+          for i in $(seq 1 90); do [ -S /var/run/clamav/clamd.ctl ] && break; sleep 2; done
+          sudo chmod 666 /var/run/clamav/clamd.ctl
+          ls -l /var/run/clamav/clamd.ctl
+
       - name: Pytest
         # -v prints each test name (so a pass/skip is legible without diffing runs);
         # -rs prints the reason for every skip so a hidden gap can't lurk behind an "s".

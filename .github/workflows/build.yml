@@ -145,8 +145,10 @@ jobs:
           Write-Host "== version =="; Invoke-Timed "$app\prescan.exe" 'version' 60 | Out-Null
           Write-Host "== engines =="; Invoke-Timed "$app\prescan.exe" 'engines' 120 | Out-Null
           Write-Host "== uninstall =="
-          Invoke-Timed "$app\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES' 300 | Out-Null
-          Write-Host "uninstalled: $(-not (Test-Path $app))"
+          # Inno's uninstaller finishes cleanup in a detached process, so checking the
+          # dir immediately races it; report the uninstaller's own exit code instead.
+          $uc = Invoke-Timed "$app\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES' 300
+          Write-Host "uninstaller exit=$uc"
 
       # ---- Artifacts ------------------------------------------------------- #
       - name: Read version (for artifact names)

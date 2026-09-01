@@ -17,6 +17,18 @@ ApplicationWindow {
     property bool systemDark: Application.styleHints.colorScheme === Qt.ColorScheme.Dark
     property bool dark: mode === "dark" || (mode === "system" && systemDark)
 
+    // The native Qt Quick Controls (Button, TabButton, CheckBox, SpinBox, …) paint
+    // from their OWN color scheme, not from `th`. Without syncing it, they stay
+    // dark-styled in the app's light theme — light text on light bg, e.g. the EN
+    // toggle and the File/Link tabs vanish. Drive the control scheme from the theme.
+    function applyControlScheme() {
+        if (mode === "light") Application.styleHints.colorScheme = Qt.ColorScheme.Light
+        else if (mode === "dark") Application.styleHints.colorScheme = Qt.ColorScheme.Dark
+        else Application.styleHints.colorScheme = Qt.ColorScheme.Unknown  // follow the OS
+    }
+    Component.onCompleted: applyControlScheme()
+    onModeChanged: applyControlScheme()
+
     property QtObject th: QtObject {
         readonly property color bg: appWindow.dark ? "#1B1B1F" : "#F5F5F7"
         readonly property color card: appWindow.dark ? "#25252A" : "#FFFFFF"

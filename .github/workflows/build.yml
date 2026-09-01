@@ -72,7 +72,10 @@ jobs:
       - name: Build Windows installer
         if: runner.os == 'Windows'
         shell: pwsh
-        run: iscc packaging\prescan.iss
+        run: |
+          # Take the version from the single source (prescan version) into ISCC.
+          $v = (& uv run prescan version).Trim() -replace '^PreScan\s+',''
+          iscc "/DAppVersion=$v" packaging\prescan.iss
 
       - name: Closed-loop with a trimmed PATH (approximation — Python is installed)
         if: runner.os == 'Windows'

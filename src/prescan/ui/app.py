@@ -33,11 +33,14 @@ _translator: object | None = None
 
 
 def _icons_dir() -> Path:
-    """Locate the icons directory in dev and inside a PyInstaller --onedir bundle."""
-    if getattr(sys, "frozen", False):
-        base = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
-        return base / "resources" / "icons"
-    return _UI_DIR.parents[2] / "resources" / "icons"
+    """Path to the packaged icons dir (works in dev, wheel and PyInstaller onedir).
+
+    Loaded as package data via importlib.resources, exactly like scoring.py reads
+    scoring_weights.toml — no repo-relative or sys._MEIPASS path juggling.
+    """
+    from importlib import resources
+
+    return Path(str(resources.files("prescan.resources").joinpath("icons")))
 
 
 def app_icon() -> object:

@@ -157,6 +157,27 @@ def update_rules() -> None:
     typer.secho(f"Installed {count} YARA rule file(s).", fg=typer.colors.GREEN)
 
 
+@app.command(name="update-model")
+def update_model() -> None:
+    """Download the ML classifier (model.onnx) into the user data directory.
+
+    The model is not shipped with the app (spec §3.4/§11.2); it is fetched from a
+    GitHub Release and its SHA-256 is verified. Until it is installed the ml stage
+    degrades gracefully (§6.1) and scans return UNKNOWN instead of a model verdict.
+    """
+    from prescan.core.config import Paths
+    from prescan.core.updater import update_model as _update_model
+
+    paths = Paths.resolve()
+    paths.ensure()
+    try:
+        model_path = asyncio.run(_update_model(paths.model_path))
+    except Exception as exc:
+        typer.secho(f"Model download failed: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(_RUNTIME_ERROR) from exc
+    typer.secho(f"Installed model: {model_path}", fg=typer.colors.GREEN)
+
+
 quarantine_app = typer.Typer(help="Manage the quarantine store.", no_args_is_help=True)
 app.add_typer(quarantine_app, name="quarantine")
 

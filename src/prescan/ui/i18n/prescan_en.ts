@@ -32,14 +32,104 @@
 <context>
     <name>Bridge</name>
     <message>
-        <location filename="../bridge.py" line="243"/>
+        <location filename="../bridge.py" line="244"/>
         <source>ML model: %1% likely malicious</source>
         <extracomment>URL-scan sources that receive the FULL URL, vs Safe Browsing (hash-prefix).</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="244"/>
+        <location filename="../bridge.py" line="245"/>
         <source>ML model could not score the file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="271"/>
+        <source>Downloading the ML model…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="275"/>
+        <source>Model download failed: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="277"/>
+        <source>ML model installed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="288"/>
+        <source>Updating ClamAV databases…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="292"/>
+        <source>ClamAV update failed: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="305"/>
+        <source>Downloading YARA rules…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="309"/>
+        <source>Rule update failed: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="311"/>
+        <source>Installed %1 YARA rule file(s).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="603"/>
+        <source>Ready</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="604"/>
+        <source>Add an API key in Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="605"/>
+        <source>Rules not downloaded — update rules</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="606"/>
+        <source>ML model not installed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="607"/>
+        <source>Not installed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="608"/>
+        <source>Source temporarily unavailable (offline)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="609"/>
+        <source>Source temporarily unavailable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="610"/>
+        <source>Not available on this OS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="611"/>
+        <source>Disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="612"/>
+        <source>File too large for this engine</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -267,107 +357,112 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="41"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="42"/>
         <source>Update ClamAV databases</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="42"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="44"/>
+        <source>Download ML model</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="45"/>
         <source>Re-check</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="50"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="64"/>
         <source>API keys</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="70"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="84"/>
         <source>key configured — enter to replace</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="71"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="85"/>
         <source>paste API key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="74"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="88"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="79"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="93"/>
         <source>Check key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="96"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="110"/>
         <source>Privacy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="104"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="118"/>
         <source>When you scan a link, the FULL URL is sent to these sources:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="117"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="131"/>
         <source>Google Safe Browsing receives only truncated hash prefixes — never the full URL.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="120"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="134"/>
         <source>Never upload files to the cloud</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="125"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="139"/>
         <source>Send only hashes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="130"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="144"/>
         <source>Disable all network activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="140"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="154"/>
         <source>Scanning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="145"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="159"/>
         <source>Download size limit (MB):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="150"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="164"/>
         <source>Scan timeout (s):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="155"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="169"/>
         <source>Archive extraction depth:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="160"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="174"/>
         <source>Cache TTL (days):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="171"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="185"/>
         <source>Interface</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="175"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="189"/>
         <source>Theme:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="183"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="197"/>
         <source>Language:</source>
         <translation type="unfinished"></translation>
     </message>

@@ -53,6 +53,7 @@ class Bridge(QObject):
     settingsChanged = Signal()
     showResult = Signal()
     keyCheckResult = Signal(str, str)  # provider id, human-readable result
+    updateStatus = Signal(str)  # progress/result of a rules/model download
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
@@ -258,6 +259,57 @@ class Bridge(QObject):
     @Slot()
     def refreshEngines(self) -> None:
         self._schedule(self._refresh_engines())
+
+    @Slot()
+    def updateModel(self) -> None:
+        """Download the ML classifier, then refresh the engine cards (§6.1)."""
+        self._schedule(self._update_model())
+
+    async def _update_model(self) -> None:
+        from prescan.core.updater import update_model
+
+        self.updateStatus.emit(self.tr("Downloading the ML model…"))
+        try:
+            await update_model(self._paths.model_path)
+        except Exception as exc:  # noqa: BLE001 - surface any failure to the user
+            self.updateStatus.emit(self.tr("Model download failed: %1").replace("%1", str(exc)))
+            return
+        self.updateStatus.emit(self.tr("ML model installed."))
+        await self._refresh_engines()
+
+    @Slot()
+    def updateClamav(self) -> None:
+        """Refresh ClamAV databases (freshclam + clamd reload), then re-check."""
+        self._schedule(self._update_clamav())
+
+    async def _update_clamav(self) -> None:
+        from prescan.core.updater import update_clamav_databases
+
+        self.updateStatus.emit(self.tr("Updating ClamAV databases…"))
+        try:
+            result = await update_clamav_databases(self._config)
+        except Exception as exc:  # noqa: BLE001 - surface any failure to the user
+            self.updateStatus.emit(self.tr("ClamAV update failed: %1").replace("%1", str(exc)))
+            return
+        self.updateStatus.emit(result.message)
+        await self._refresh_engines()
+
+    @Slot()
+    def updateRules(self) -> None:
+        """Download YARA Forge rules, then refresh the engine cards."""
+        self._schedule(self._update_rules())
+
+    async def _update_rules(self) -> None:
+        from prescan.core.updater import update_yara_rules
+
+        self.updateStatus.emit(self.tr("Downloading YARA rules…"))
+        try:
+            count = await update_yara_rules(self._paths.yara_rules_dir)
+        except Exception as exc:  # noqa: BLE001 - surface any failure to the user
+            self.updateStatus.emit(self.tr("Rule update failed: %1").replace("%1", str(exc)))
+            return
+        self.updateStatus.emit(self.tr("Installed %1 YARA rule file(s).").replace("%1", str(count)))
+        await self._refresh_engines()
 
     def _schedule(self, coro: Any) -> None:
         """Schedule a coroutine on the running loop; no-op cleanly if none yet.
@@ -546,18 +598,18 @@ class Bridge(QObject):
 
     @Slot(str, str, result=str)
     def availabilityText(self, availability: str, detail: str) -> str:
-        """Map an Availability value to user guidance (not one generic string)."""
+        """Localised user guidance per Availability value (via i18n, §16.14)."""
         mapping = {
-            Availability.READY.value: "Ready",
-            Availability.NO_KEY.value: "Add an API key in Settings",
-            Availability.NO_RULES.value: "Rules not downloaded — update rules",
-            Availability.NO_MODEL.value: "ML model not installed",
-            Availability.NOT_INSTALLED.value: "Not installed",
-            Availability.OFFLINE.value: "Source temporarily unavailable (offline)",
-            Availability.ERROR.value: "Source temporarily unavailable",
-            Availability.UNSUPPORTED_OS.value: "Not available on this OS",
-            Availability.DISABLED.value: "Disabled",
-            Availability.TOO_LARGE.value: "File too large for this engine",
+            Availability.READY.value: self.tr("Ready"),
+            Availability.NO_KEY.value: self.tr("Add an API key in Settings"),
+            Availability.NO_RULES.value: self.tr("Rules not downloaded — update rules"),
+            Availability.NO_MODEL.value: self.tr("ML model not installed"),
+            Availability.NOT_INSTALLED.value: self.tr("Not installed"),
+            Availability.OFFLINE.value: self.tr("Source temporarily unavailable (offline)"),
+            Availability.ERROR.value: self.tr("Source temporarily unavailable"),
+            Availability.UNSUPPORTED_OS.value: self.tr("Not available on this OS"),
+            Availability.DISABLED.value: self.tr("Disabled"),
+            Availability.TOO_LARGE.value: self.tr("File too large for this engine"),
         }
         return mapping.get(availability, detail or availability)
 

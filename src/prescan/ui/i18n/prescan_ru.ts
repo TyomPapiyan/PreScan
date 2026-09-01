@@ -32,14 +32,105 @@
 <context>
     <name>Bridge</name>
     <message>
-        <location filename="../bridge.py" line="243"/>
+        <location filename="../bridge.py" line="244"/>
         <source>ML model: %1% likely malicious</source>
+        <extracomment>URL-scan sources that receive the FULL URL, vs Safe Browsing (hash-prefix).</extracomment>
         <translation>ML-модель: %1% вероятность вредоносности</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="244"/>
+        <location filename="../bridge.py" line="245"/>
         <source>ML model could not score the file</source>
         <translation>ML-модель не смогла оценить файл</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="271"/>
+        <source>Downloading the ML model…</source>
+        <translation>Загрузка ML-модели…</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="275"/>
+        <source>Model download failed: %1</source>
+        <translation>Не удалось загрузить модель: %1</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="277"/>
+        <source>ML model installed.</source>
+        <translation>ML-модель установлена.</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="288"/>
+        <source>Updating ClamAV databases…</source>
+        <translation>Обновление баз ClamAV…</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="292"/>
+        <source>ClamAV update failed: %1</source>
+        <translation>Не удалось обновить ClamAV: %1</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="305"/>
+        <source>Downloading YARA rules…</source>
+        <translation>Загрузка правил YARA…</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="309"/>
+        <source>Rule update failed: %1</source>
+        <translation>Не удалось обновить правила: %1</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="311"/>
+        <source>Installed %1 YARA rule file(s).</source>
+        <translation>Установлено файлов правил YARA: %1</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="603"/>
+        <source>Ready</source>
+        <translation>Готово</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="604"/>
+        <source>Add an API key in Settings</source>
+        <translation>Добавьте API-ключ в настройках</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="605"/>
+        <source>Rules not downloaded — update rules</source>
+        <translation>Правила не загружены — обновите правила</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="606"/>
+        <source>ML model not installed</source>
+        <translation>ML-модель не установлена</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="607"/>
+        <source>Not installed</source>
+        <translation>Не установлено</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="608"/>
+        <source>Source temporarily unavailable (offline)</source>
+        <translation>Источник временно недоступен (офлайн)</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="609"/>
+        <source>Source temporarily unavailable</source>
+        <translation>Источник временно недоступен</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="610"/>
+        <source>Not available on this OS</source>
+        <translation>Недоступно в этой ОС</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="611"/>
+        <source>Disabled</source>
+        <translation>Отключено</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="612"/>
+        <source>File too large for this engine</source>
+        <translation>Файл слишком большой для этого движка</translation>
     </message>
 </context>
 <context>
@@ -270,107 +361,112 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
         <translation>Обновить правила YARA</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="41"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="42"/>
         <source>Update ClamAV databases</source>
         <translation>Обновить базы ClamAV</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="42"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="44"/>
+        <source>Download ML model</source>
+        <translation>Скачать ML-модель</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="45"/>
         <source>Re-check</source>
         <translation>Проверить снова</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="50"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="64"/>
         <source>API keys</source>
         <translation>API-ключи</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="70"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="84"/>
         <source>key configured — enter to replace</source>
         <translation>ключ задан — введите новый, чтобы заменить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="71"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="85"/>
         <source>paste API key</source>
         <translation>вставьте API-ключ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="74"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="88"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="79"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="93"/>
         <source>Check key</source>
         <translation>Проверить ключ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="96"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="110"/>
         <source>Privacy</source>
         <translation>Приватность</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="104"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="118"/>
         <source>When you scan a link, the FULL URL is sent to these sources:</source>
         <translation>При проверке ссылки ПОЛНЫЙ URL отправляется этим источникам:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="117"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="131"/>
         <source>Google Safe Browsing receives only truncated hash prefixes — never the full URL.</source>
         <translation>Google Safe Browsing получает только усечённые hash-префиксы — никогда полный URL.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="120"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="134"/>
         <source>Never upload files to the cloud</source>
         <translation>Никогда не загружать файлы в облако</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="125"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="139"/>
         <source>Send only hashes</source>
         <translation>Отправлять только хеши</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="130"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="144"/>
         <source>Disable all network activity</source>
         <translation>Отключить всю сетевую активность</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="140"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="154"/>
         <source>Scanning</source>
         <translation>Сканирование</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="145"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="159"/>
         <source>Download size limit (MB):</source>
         <translation>Лимит размера загрузки (МБ):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="150"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="164"/>
         <source>Scan timeout (s):</source>
         <translation>Тайм-аут проверки (с):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="155"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="169"/>
         <source>Archive extraction depth:</source>
         <translation>Глубина распаковки архивов:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="160"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="174"/>
         <source>Cache TTL (days):</source>
         <translation>Срок жизни кэша (дней):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="171"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="185"/>
         <source>Interface</source>
         <translation>Интерфейс</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="175"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="189"/>
         <source>Theme:</source>
         <translation>Тема:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="183"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="197"/>
         <source>Language:</source>
         <translation>Язык:</translation>
     </message>

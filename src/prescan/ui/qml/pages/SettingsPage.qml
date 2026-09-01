@@ -37,9 +37,23 @@ Item {
                     anchors.fill: parent
                     EngineStatusCard { theme: page.theme }
                     RowLayout {
-                        Button { text: qsTr("Update YARA rules") }
-                        Button { text: qsTr("Update ClamAV databases") }
+                        Button { text: qsTr("Update YARA rules"); onClicked: Bridge.updateRules() }
+                        Button {
+                            text: qsTr("Update ClamAV databases"); onClicked: Bridge.updateClamav()
+                        }
+                        Button { text: qsTr("Download ML model"); onClicked: Bridge.updateModel() }
                         Button { text: qsTr("Re-check"); onClicked: Bridge.refreshEngines() }
+                    }
+                    Label {
+                        id: updateStatus
+                        visible: text.length > 0
+                        color: page.theme.subtext
+                        wrapMode: Text.WordWrap
+                        Layout.fillWidth: true
+                        Connections {
+                            target: Bridge
+                            function onUpdateStatus(msg) { updateStatus.text = msg }
+                        }
                     }
                 }
             }

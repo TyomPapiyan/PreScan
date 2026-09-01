@@ -62,9 +62,10 @@ datas = [
     ("src/prescan/ui/i18n", "prescan/ui/i18n"),
     ("src/prescan/ui/assets", "prescan/ui/assets"),
     ("src/prescan/ui/vendor/RinUI", "prescan/ui/vendor/RinUI"),
-    # ".." puts licenses/ at the bundle root, next to the executable, so a user who
-    # opens the app folder sees it immediately (§11.5) -- not inside _internal/.
-    ("licenses", "../licenses"),
+    # NOTE: licenses/ is NOT bundled here. PyInstaller 6 forbids a datas dest with
+    # ".." ("DEST_DIR must not point outside of application's top-level directory"),
+    # so licenses/ is copied to the bundle root (next to the exe, §11.5) as a
+    # post-build step in build.yml / build-deb.sh instead of into _internal/.
 ]
 # The automatic PySide6 hook collects the Qt libs, plugins and QML modules it needs
 # (including the QtQuick Controls / FluentWinUI3 style loaded at runtime).

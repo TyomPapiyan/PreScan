@@ -44,6 +44,10 @@ jobs:
       - name: Build the --onedir bundle (PyInstaller)
         run: uv run pyinstaller prescan.spec --noconfirm --distpath dist --workpath build
 
+      - name: Stage licenses next to the executable (§11.5)
+        shell: bash
+        run: cp -r licenses dist/PreScan/licenses
+
       - name: List bundle root + separate Qt libraries (§11.2 row 4, §11.3)
         shell: bash
         run: |

@@ -23,6 +23,8 @@ trap 'rm -rf "$pkg"' EXIT
 # App payload under /opt/prescan, launcher symlinked onto PATH.
 install -d "$pkg/opt/prescan" "$pkg/usr/bin" "$pkg/usr/share/applications"
 cp -a "$bundle/." "$pkg/opt/prescan/"
+# licenses/ next to the executable (§11.5); PyInstaller can't place it there itself.
+cp -r "$root/licenses" "$pkg/opt/prescan/licenses"
 ln -s /opt/prescan/prescan "$pkg/usr/bin/prescan"
 install -m 0644 "$here/prescan.desktop" "$pkg/usr/share/applications/prescan.desktop"
 

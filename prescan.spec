@@ -65,6 +65,29 @@ a = Analysis(
     noarchive=False,
 )
 
+# The PySide6 hook still copies whole Qt module libs and their QML plugins even
+# when the Python modules are excluded; drop the unused ones from the final lists so
+# they don't ship (Qt3D, WebEngine, Multimedia, … — the app never loads them).
+_DROP = (
+    "Qt63D", "Qt6Quick3D", "Qt6Multimedia", "Qt6SpatialAudio", "Qt6Charts",
+    "Qt6DataVisualization", "Qt6Graphs", "Qt6Pdf", "Qt6WebEngine", "Qt6WebView",
+    "Qt6WebSockets", "Qt6WebChannel", "Qt6Designer", "Qt6RemoteObjects", "Qt6Scxml",
+    "Qt6TextToSpeech", "Qt6Sensors", "Qt6Nfc", "Qt6Bluetooth", "Qt6SerialPort",
+    "Qt6SerialBus", "Qt6Location", "Qt6Positioning", "Qt6Sql", "Qt6Test", "Qt6Help",
+    "Qt6NetworkAuth", "Qt6HttpServer", "Qt6UiTools", "Qt6QuickWidgets",
+)
+_DROP_QML = ("/Qt3D", "/QtQuick3D", "/QtMultimedia", "/QtWebEngine", "/QtCharts",
+             "/QtDataVisualization", "/QtWebView", "/QtBluetooth", "/QtPositioning")
+
+
+def _drop(entry):
+    name = entry[0].replace("\\", "/")
+    return any(d in name for d in _DROP) or any(q in name for q in _DROP_QML)
+
+
+a.binaries = [b for b in a.binaries if not _drop(b)]
+a.datas = [d for d in a.datas if not _drop(d)]
+
 pyz = PYZ(a.pure)
 
 exe = EXE(

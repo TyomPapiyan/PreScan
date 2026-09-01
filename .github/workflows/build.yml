@@ -19,10 +19,10 @@ jobs:
         os: [ubuntu-24.04, windows-2022]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
 
       - name: Set up Python 3.12
         run: uv python install 3.12
@@ -140,7 +140,7 @@ jobs:
 
       - name: Upload Linux artifacts
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: prescan-linux-${{ steps.ver.outputs.v }}
           path: |
@@ -149,7 +149,7 @@ jobs:
 
       - name: Upload Windows artifacts
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: prescan-windows-${{ steps.ver.outputs.v }}
           path: |

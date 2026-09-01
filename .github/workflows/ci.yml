@@ -83,6 +83,16 @@ jobs:
           sudo chmod 666 /var/run/clamav/clamd.ctl
           ls -l /var/run/clamav/clamd.ctl
 
+      # The EMBER feature-parity test (bit-for-bit vs the reference extractor) is the
+      # only proof our pefile vector matches what the model was trained on. thrember
+      # is a dev-only dep (sklearn + signify); §3.4 restricts the *runtime* inference,
+      # not the CI test env, so install it on Linux and let the parity test run.
+      - name: Install thrember (EMBER parity test, Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          uv pip install "thrember @ git+https://github.com/FutureComputing4AI/EMBER2024.git"
+          uv pip install "signify==0.7.1"  # thrember needs the old signify SignedPEFile API
+
       - name: Pytest
         # -v prints each test name (so a pass/skip is legible without diffing runs);
         # -rs prints the reason for every skip so a hidden gap can't lurk behind an "s".

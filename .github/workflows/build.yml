@@ -6,8 +6,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Fail a tag-triggered run *before* the ~15 min build if the tag and the code
+  # version disagree. Artifact names come from __version__ (not the tag), so a tag
+  # pushed without bumping src/prescan/__init__.py would otherwise ship files whose
+  # names silently mismatch the release. Non-tag runs skip the check and pass.
+  guard:
+    name: tag/version guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tag must equal "v" + __version__
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          ver=$(grep -oP '__version__\s*=\s*"\K[^"]+' src/prescan/__init__.py)
+          echo "tag=${GITHUB_REF_NAME}  __version__=${ver}"
+          if [ "${GITHUB_REF_NAME}" != "v${ver}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} != v${ver} (src/prescan/__init__.py) -- bump __version__ or retag"
+            exit 1
+          fi
+
   build:
     name: build (${{ matrix.os }})
+    needs: guard
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

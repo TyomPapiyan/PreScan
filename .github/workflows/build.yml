@@ -133,18 +133,24 @@ jobs:
           Write-Host "uninstalled: $(-not (Test-Path $app))"
 
       # ---- Artifacts ------------------------------------------------------- #
+      - name: Read version (for artifact names)
+        id: ver
+        shell: bash
+        run: echo "v=$(uv run prescan version | sed -E 's/^PreScan //')" >> "$GITHUB_OUTPUT"
+
       - name: Upload Linux artifacts
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: prescan-linux
+          name: prescan-linux-${{ steps.ver.outputs.v }}
           path: |
             dist/prescan_*_amd64.deb
+            dist/PreScan-*-x86_64.AppImage
 
       - name: Upload Windows artifacts
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: prescan-windows
+          name: prescan-windows-${{ steps.ver.outputs.v }}
           path: |
             dist/PreScan-Setup-*.exe

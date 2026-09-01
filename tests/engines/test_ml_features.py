@@ -9,11 +9,53 @@ parity test self-heals to a skip there and must be run locally before M6a closes
 
 from __future__ import annotations
 
+import importlib
+import sys
+import types
+from typing import Any
+
 import numpy as np
 import pytest
 
 from prescan.core.ml.features import PEFeatureExtractor
 from tests.fixtures.pe import minimal_pe
+
+
+def _import_thrember() -> Any:
+    """Import thrember, stubbing signify only if its real import fails.
+
+    thrember imports ``signify`` at module load for its Authenticode feature. On
+    OpenSSL 3.x (the CI runner) signify's ``oscrypto`` dependency fails to import,
+    which would make ``importorskip`` error instead of skip. For every input this
+    test uses (unsigned PE / non-PE) thrember's Authenticode sub-vector is all zeros
+    regardless of signify, so a no-op stub yields byte-identical reference vectors
+    while avoiding the broken chain. If real signify imports (e.g. locally), it is
+    used unchanged.
+    """
+    try:
+        importlib.import_module("signify.authenticode")
+    except Exception:  # noqa: BLE001 - any import failure (e.g. oscrypto) -> stub
+        sig = types.ModuleType("signify")
+        auth = types.ModuleType("signify.authenticode")
+        exc = types.ModuleType("signify.exceptions")
+
+        class _SignedPEFile:
+            def __init__(self, *_a: object, **_k: object) -> None: ...
+            def iter_signed_datas(self) -> list[object]:
+                return []
+
+        class _ParseError(Exception): ...
+
+        auth.SignedPEFile = _SignedPEFile  # type: ignore[attr-defined]
+        exc.ParseError = _ParseError  # type: ignore[attr-defined]
+        exc.SignerInfoParseError = _ParseError  # type: ignore[attr-defined]
+        sig.authenticode = auth  # type: ignore[attr-defined]
+        sig.exceptions = exc  # type: ignore[attr-defined]
+        sys.modules["signify"] = sig
+        sys.modules["signify.authenticode"] = auth
+        sys.modules["signify.exceptions"] = exc
+    return pytest.importorskip("thrember")
+
 
 # A deterministic ~1 MiB buffer: the full byte range (exercises the vectorized
 # ByteEntropyHistogram window loop) plus printable runs that hit the string regexes
@@ -46,7 +88,7 @@ def test_vector_shape_and_dtype_on_non_pe() -> None:
 )
 def test_parity_with_thrember(data: bytes) -> None:
     """Our vector must equal thrember's exactly on the same bytes."""
-    thrember = pytest.importorskip("thrember")
+    thrember = _import_thrember()
     if not data:
         pytest.skip("thrember divides by zero on empty input; not a real target")
     mine = PEFeatureExtractor().feature_vector(data)
@@ -82,8 +124,7 @@ def test_byte_entropy_reduction_parity_randomized() -> None:
     scalar np.sum over nonzero bins; a 1-ulp float32 difference would flip an
     int(H*2) entropy bin silently. Sweep varied distributions to catch that -- one
     fixed buffer would not."""
-    thrember = pytest.importorskip("thrember")
-    mine, ref = PEFeatureExtractor(), thrember.PEFeatureExtractor()
+    mine, ref = PEFeatureExtractor(), _import_thrember().PEFeatureExtractor()
     rng = np.random.RandomState(20260901)
     for i in range(50):
         data = _entropy_probe_buffer(rng, i % 6, 64 * 1024)

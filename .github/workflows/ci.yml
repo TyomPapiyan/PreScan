@@ -89,3 +89,12 @@ jobs:
         run: uv run pytest -v -rs
         env:
           QT_QPA_PLATFORM: offscreen
+
+      # §13.2 is a mandatory test but carries the `slow` marker, so the default
+      # `-m "not slow"` deselects it -- a mandatory test that runs nowhere. Run it
+      # explicitly on Linux (real wall-clock, ~75 s) so it actually executes.
+      - name: Pytest (slow / mandatory §13.2)
+        if: runner.os == 'Linux'
+        run: uv run pytest -m slow -v -rs
+        env:
+          QT_QPA_PLATFORM: offscreen

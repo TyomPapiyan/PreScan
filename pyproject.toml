@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prescan"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Pre-execution malware and link scanner (signal aggregator + ML)."
 readme = "README.md"
 license = { text = "MIT" }
@@ -101,6 +101,11 @@ prescan = "prescan.cli:app"
 [project.urls]
 Homepage = "https://github.com/prescan/prescan"
 Repository = "https://github.com/prescan/prescan"
+
+# Single source of truth for the version: src/prescan/__init__.py __version__.
+# pyproject, `prescan version`, the .deb and the Inno installer all derive from it.
+[tool.hatch.version]
+path = "src/prescan/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prescan"]

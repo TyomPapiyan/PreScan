@@ -194,6 +194,7 @@ Item {
             id: saveDialog
             fileMode: FileDialog.SaveFile
             defaultSuffix: "html"
+            nameFilters: [qsTr("HTML report (*.html)"), qsTr("PDF report (*.pdf)")]
             onAccepted: Bridge.saveReport(selectedFile.toString())
         }
     }

@@ -177,3 +177,74 @@ def test_privacy_lists_full_url_sources(gui: Any) -> None:
     assert any("urlscan" in s for s in sources)
     assert any("URLhaus" in s for s in sources)
     assert "hash prefix" in gui.bridge.privacyNote().lower()
+
+
+def _sample_report() -> Any:
+    from datetime import UTC, datetime
+
+    from prescan.core.models import (
+        FileInfo,
+        ScanReport,
+        ScanRequest,
+        Severity,
+        Signal,
+        SourceKind,
+        TargetKind,
+        Verdict,
+    )
+
+    now = datetime.now(UTC)
+    return ScanReport(
+        scan_id="id",
+        app_version="0.0.0",
+        request=ScanRequest(target_kind=TargetKind.FILE, file_path="/tmp/x.exe"),
+        started_at=now,
+        finished_at=now,
+        duration_s=0.1,
+        file=FileInfo(
+            path="/tmp/x.exe",
+            name="x.exe",
+            size=10,
+            declared_extension=".exe",
+            detected_type="PE32",
+            detected_mime="application/x-dosexec",
+            md5="0" * 32,
+            sha1="0" * 40,
+            sha256="a" * 64,
+        ),
+        signals=[
+            Signal(
+                source="yara-x",
+                kind=SourceKind.LOCAL_ENGINE,
+                severity=Severity.HIGH,
+                title_key="k",
+                title_en="YARA rule matched",
+                weight=75,
+            )
+        ],
+        verdict=Verdict.SUSPICIOUS,
+        risk_score=60,
+        verdict_reason_key="verdict.suspicious",
+        verdict_reason_en="Attention required",
+    )
+
+
+def test_save_report_picks_format_by_extension(gui: Any, tmp_path: Path) -> None:
+    """Save report… writes a real PDF for a .pdf path and HTML otherwise (§16.1).
+
+    Proves the pdf_export module is actually wired to the Bridge, not dead code:
+    a .pdf save must start with the %PDF- signature; a .html save stays HTML.
+    """
+    gui.bridge._apply_report(_sample_report())
+
+    pdf = tmp_path / "report.pdf"
+    assert gui.bridge.saveReport(str(pdf)) is True
+    pdf_bytes = pdf.read_bytes()
+    assert pdf_bytes.startswith(b"%PDF-")
+    assert len(pdf_bytes) > 0
+
+    html = tmp_path / "report.html"
+    assert gui.bridge.saveReport(str(html)) is True
+    html_text = html.read_text(encoding="utf-8")
+    assert not html_text.startswith("%PDF-")
+    assert "suspicious" in html_text.lower()

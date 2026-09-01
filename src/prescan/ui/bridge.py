@@ -449,7 +449,15 @@ class Bridge(QObject):
         from prescan.core.report import to_html
 
         out = path[len("file://") :] if path.startswith("file://") else path
-        Path(out).write_text(to_html(self._report, lang=self._language), encoding="utf-8")
+        html = to_html(self._report, lang=self._language)
+        # Format follows the chosen file's extension; HTML stays the default (§16.1
+        # keeps PDF in the UI layer, never in core -- so the import is local here).
+        if out.lower().endswith(".pdf"):
+            from prescan.ui.pdf_export import html_to_pdf
+
+            html_to_pdf(html, Path(out))
+        else:
+            Path(out).write_text(html, encoding="utf-8")
         return True
 
     # ---- settings / privacy ------------------------------------------- #

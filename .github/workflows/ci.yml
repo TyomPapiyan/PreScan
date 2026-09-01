@@ -86,7 +86,8 @@ jobs:
       - name: Pytest
         # -v prints each test name (so a pass/skip is legible without diffing runs);
         # -rs prints the reason for every skip so a hidden gap can't lurk behind an "s".
-        run: uv run pytest -v -rs
+        # --cov reports core coverage (CLAUDE.md floor: >= 80% since M4).
+        run: uv run pytest -v -rs --cov=prescan.core --cov-report=term
         env:
           QT_QPA_PLATFORM: offscreen
 

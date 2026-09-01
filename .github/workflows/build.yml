@@ -94,10 +94,13 @@ jobs:
             prescan engines
             prescan scan /etc/hostname --no-network --quiet || true
             # GUI: survive the 8 s timeout AND print no fatal / ImportError / Traceback.
-            timeout 8 prescan 2>/tmp/gui.err; code=$?
+            # "|| code=$?" keeps set -e from treating the expected 124 as fatal.
+            code=0; timeout 8 prescan 2>/tmp/gui.err || code=$?
             echo "gui exit=$code"; cat /tmp/gui.err
-            grep -qiE "Traceback|ImportError|fatal|cannot open shared object" /tmp/gui.err && exit 1
-            [ "$code" -eq 124 ]
+            if grep -qiE "Traceback|ImportError|fatal|cannot open shared object" /tmp/gui.err; then
+              echo "GUI printed a fatal error"; exit 1
+            fi
+            if [ "$code" -ne 124 ]; then echo "GUI exited early ($code), did not stay up"; exit 1; fi
           '
 
       # ---- Windows: Inno Setup installer + trimmed-PATH smoke -------------- #

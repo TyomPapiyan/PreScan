@@ -13,9 +13,9 @@ whenever a dependency is added.
 | LIEF | Apache-2.0 | `Apache2-LIEF.txt`, `NOTICE-LIEF` | https://github.com/lief-project/LIEF |
 | capa | Apache-2.0 | `Apache2-capa.txt`, `NOTICE-capa` | https://github.com/mandiant/capa |
 | ClamAV | GPL-2.0 | (not bundled) | https://www.clamav.net/ |
-| oletools | BSD-2 / MIT | (to add) | https://github.com/decalage2/oletools |
-| pikepdf | MPL-2.0 | (to add) | https://github.com/pikepdf/pikepdf |
-| py7zr | LGPL-2.1+ | (to add) | https://github.com/miurahr/py7zr |
+| oletools | BSD-2 / MIT | `BSD2-MIT-oletools.txt` | https://github.com/decalage2/oletools |
+| pikepdf | MPL-2.0 | `MPL2-pikepdf.txt` | https://github.com/pikepdf/pikepdf |
+| py7zr | LGPL-2.1+ | `LGPL21-py7zr.txt` | https://github.com/miurahr/py7zr |
 | YARA Forge | mixed permissive | (downloaded by user) | https://yaraforge.io/ |
 | Microsoft Defender CLI | Windows EULA | (not distributed) | — |
 | EMBER2024 benchmark model | Apache-2.0 | `Apache2-EMBER2024.txt` | https://huggingface.co/joyce8/EMBER2024-benchmark-models |

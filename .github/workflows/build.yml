@@ -254,7 +254,7 @@ jobs:
           sha256sum prescan_*_amd64.deb PreScan-*-x86_64.AppImage PreScan-Setup-*.exe > SHA256SUMS
           echo "== release/ =="; ls -l; echo "== SHA256SUMS =="; cat SHA256SUMS
 
-      - name: Create the GitHub release
+      - name: Create or update the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -262,10 +262,19 @@ jobs:
           ver="${GITHUB_REF_NAME#v}"
           notes="docs/release-notes/v${ver}.md"
           [ -f "$notes" ] || { echo "::error::missing $notes"; exit 1; }
-          gh release create "${GITHUB_REF_NAME}" \
-            --title "PreScan ${ver}" \
-            --notes-file "$notes" \
-            release/prescan_*_amd64.deb \
-            release/PreScan-*-x86_64.AppImage \
-            release/PreScan-Setup-*.exe \
+          files=(
+            release/prescan_*_amd64.deb
+            release/PreScan-*-x86_64.AppImage
+            release/PreScan-Setup-*.exe
             release/SHA256SUMS
+          )
+          # Idempotent: a re-run of the tag build must not fail on an existing
+          # release. Refresh notes/title and re-upload assets (--clobber) instead.
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "release ${GITHUB_REF_NAME} exists -> update notes and re-upload assets"
+            gh release edit "${GITHUB_REF_NAME}" --title "PreScan ${ver}" --notes-file "$notes"
+            gh release upload "${GITHUB_REF_NAME}" "${files[@]}" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "PreScan ${ver}" --notes-file "$notes" "${files[@]}"
+          fi

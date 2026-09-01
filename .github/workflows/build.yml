@@ -92,7 +92,7 @@ jobs:
             prescan engines
             # The way a real user makes the installed app useful: fetch the model from
             # the release (SHA-256 checked) and confirm the ml engine flips to READY.
-            # This also proves the frozen app's platformdirs paths resolve correctly.
+            # This also proves the frozen platformdirs paths resolve correctly.
             prescan update-model
             echo "== engines after update-model =="; prescan engines | grep -E "^ml "
             prescan scan /etc/hostname --no-network --quiet || true

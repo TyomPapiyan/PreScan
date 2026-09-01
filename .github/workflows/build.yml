@@ -129,14 +129,23 @@ jobs:
           # uninstall silently. Caveat (stated in the report): Python is still present
           # on the runner, so a truly virgin Windows is NOT proven -- only that the
           # installed package runs without depending on the runner's Python.
+          $ErrorActionPreference = 'Stop'
+          function Invoke-Timed($exe, $argv, $sec) {
+            $p = Start-Process -FilePath $exe -ArgumentList $argv -NoNewWindow -PassThru
+            if (-not $p.WaitForExit($sec * 1000)) { $p.Kill(); throw "TIMEOUT: $exe $argv" }
+            return $p.ExitCode
+          }
           $setup = (Get-ChildItem dist\PreScan-Setup-*.exe)[0].FullName
-          Start-Process -FilePath $setup -ArgumentList '/VERYSILENT','/NORESTART' -Wait
+          # /SUPPRESSMSGBOXES so no dialog can wait forever on a headless runner.
+          Write-Host "== install =="
+          Invoke-Timed $setup '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES' 300 | Out-Null
           $app = "C:\Program Files\PreScan"
           Write-Host "== installed licenses (§11.5) =="; Get-ChildItem "$app\licenses" | Select-Object -First 5 Name
           $env:PATH = "C:\Windows\System32;C:\Windows"
-          & "$app\prescan.exe" version
-          & "$app\prescan.exe" engines
-          Start-Process -FilePath "$app\unins000.exe" -ArgumentList '/VERYSILENT' -Wait
+          Write-Host "== version =="; Invoke-Timed "$app\prescan.exe" 'version' 60 | Out-Null
+          Write-Host "== engines =="; Invoke-Timed "$app\prescan.exe" 'engines' 120 | Out-Null
+          Write-Host "== uninstall =="
+          Invoke-Timed "$app\unins000.exe" '/VERYSILENT /SUPPRESSMSGBOXES' 300 | Out-Null
           Write-Host "uninstalled: $(-not (Test-Path $app))"
 
       # ---- Artifacts ------------------------------------------------------- #

@@ -44,7 +44,9 @@ datas = [
     ("src/prescan/ui/i18n", "prescan/ui/i18n"),
     ("src/prescan/ui/assets", "prescan/ui/assets"),
     ("src/prescan/ui/vendor/RinUI", "prescan/ui/vendor/RinUI"),
-    ("licenses", "licenses"),
+    # ".." puts licenses/ at the bundle root, next to the executable, so a user who
+    # opens the app folder sees it immediately (§11.5) -- not inside _internal/.
+    ("licenses", "../licenses"),
 ]
 # The automatic PySide6 hook collects the Qt libs, plugins and QML modules it needs
 # (including the QtQuick Controls / FluentWinUI3 style loaded at runtime).

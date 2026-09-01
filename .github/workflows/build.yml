@@ -67,27 +67,30 @@ jobs:
         if: runner.os == 'Linux'
         run: bash packaging/build-deb.sh
 
-      - name: Closed-loop in ubuntu:24.04 (no Python; §6.1 degradation)
+      - name: Prove licenses/ ships inside the .deb (§11.5)
+        if: runner.os == 'Linux'
+        run: dpkg -c dist/prescan_*_amd64.deb | grep -E '/opt/prescan/licenses/' | head
+
+      - name: Closed-loop from the INSTALLED .deb in ubuntu:24.04 (no Python; §12)
         if: runner.os == 'Linux'
         run: |
           set -e
-          # CLI needs nothing beyond the bundle — prove it in a bare container.
-          run() { docker run --rm -v "$PWD/dist:/app" ubuntu:24.04 "$@"; }
-          run /app/PreScan/prescan version
-          run /app/PreScan/prescan engines
-          run sh -c '/app/PreScan/prescan scan /app/PreScan/prescan --no-network --quiet' || true
-          # GUI: PyInstaller does not bundle the system GL/GLib driver libs (correct),
-          # so install the minimal set the Qt platform needs (the .deb Depends on the
-          # same). Stronger than "exit 124": require the process to survive the 8 s
-          # timeout AND its stderr to carry no fatal / ImportError / Traceback — a
-          # window that failed to draw would print one of those.
-          docker run --rm -e QT_QPA_PLATFORM=offscreen -v "$PWD/dist:/app" ubuntu:24.04 sh -c '
-            apt-get update -qq && apt-get install -y -qq \
-              libgl1 libglib2.0-0 libegl1 libxkbcommon0 libdbus-1-3 >/dev/null
-            timeout 8 /app/PreScan/prescan 2>/tmp/gui.err; code=$?
+          # §12: prove the PACKAGE runs on a clean Ubuntu without Python. apt installs
+          # the .deb and pulls its Depends itself -- if a runtime lib were missing from
+          # Depends the GUI would fail here (the run #1 libGL.so.1 error), after install.
+          docker run --rm -e QT_QPA_PLATFORM=offscreen -v "$PWD/dist:/deb" ubuntu:24.04 bash -c '
+            set -e
+            apt-get update -qq
+            apt-get install -y -qq /deb/prescan_*_amd64.deb
+            prescan version
+            prescan engines
+            prescan scan /etc/hostname --no-network --quiet || true
+            # GUI: survive the 8 s timeout AND print no fatal / ImportError / Traceback.
+            timeout 8 prescan 2>/tmp/gui.err; code=$?
             echo "gui exit=$code"; cat /tmp/gui.err
             grep -qiE "Traceback|ImportError|fatal|cannot open shared object" /tmp/gui.err && exit 1
-            [ "$code" -eq 124 ]'
+            [ "$code" -eq 124 ]
+          '
 
       # ---- Windows: Inno Setup installer + trimmed-PATH smoke -------------- #
       - name: Ensure Inno Setup (ISCC)

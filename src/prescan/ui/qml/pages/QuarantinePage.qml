@@ -18,6 +18,7 @@ Item {
     Dialog {
         id: restoreConfirm
         anchors.centerIn: parent
+        width: Math.min(parent.width - 48, 460)
         modal: true
         title: qsTr("Restore this file?")
         standardButtons: Dialog.Yes | Dialog.No
@@ -33,6 +34,7 @@ Item {
     Dialog {
         id: deleteConfirm
         anchors.centerIn: parent
+        width: Math.min(parent.width - 48, 460)
         modal: true
         title: qsTr("Delete permanently?")
         standardButtons: Dialog.Yes | Dialog.No

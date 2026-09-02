@@ -84,6 +84,7 @@ Item {
     Dialog {
         id: clearConfirm
         anchors.centerIn: parent
+        width: Math.min(parent.width - 48, 460)
         modal: true
         title: qsTr("Clear history?")
         standardButtons: Dialog.Yes | Dialog.No

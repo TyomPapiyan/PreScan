@@ -248,3 +248,43 @@ def test_save_report_picks_format_by_extension(gui: Any, tmp_path: Path) -> None
     html_text = html.read_text(encoding="utf-8")
     assert not html_text.startswith("%PDF-")
     assert "suspicious" in html_text.lower()
+
+
+def _find_object(engine: Any, name: str) -> Any:
+    def walk(obj: Any) -> Any:
+        if obj.objectName() == name:
+            return obj
+        for child in obj.children():
+            hit = walk(child)
+            if hit is not None:
+                return hit
+        return None
+
+    for root in engine.rootObjects():
+        hit = walk(root)
+        if hit is not None:
+            return hit
+    return None
+
+
+def test_save_dialog_suffix_follows_filter(gui: Any, tmp_path: Path) -> None:
+    """The Save-report dialog's suffix follows the selected filter, so a name typed
+    without an extension is saved in the format the user actually picked -- no silent
+    HTML when PDF was chosen. HTML stays the default when the dialog opens (§16.1)."""
+    from PySide6.QtQml import QQmlProperty
+
+    dialog = _find_object(gui.engine, "saveReportDialog")
+    assert dialog is not None, "saveReportDialog not found in the loaded UI"
+
+    assert QQmlProperty.read(dialog, "defaultSuffix") == "html"  # default on open
+    QQmlProperty.write(dialog, "selectedNameFilter.index", 1)  # user picks PDF
+    suffix = QQmlProperty.read(dialog, "defaultSuffix")
+    QQmlProperty.write(dialog, "selectedNameFilter.index", 0)  # restore for other tests
+    assert suffix == "pdf"
+
+    # Close the trap end to end: an extensionless name gets this suffix from Qt, and
+    # the resulting path must produce a real PDF, not a silently-mislabelled HTML.
+    gui.bridge._apply_report(_sample_report())
+    out = tmp_path / f"report.{suffix}"
+    assert gui.bridge.saveReport(str(out)) is True
+    assert out.read_bytes().startswith(b"%PDF-")

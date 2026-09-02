@@ -192,9 +192,13 @@ Item {
         }
         FileDialog {
             id: saveDialog
+            objectName: "saveReportDialog"
             fileMode: FileDialog.SaveFile
-            defaultSuffix: "html"
             nameFilters: [qsTr("HTML report (*.html)"), qsTr("PDF report (*.pdf)")]
+            // Suffix follows the selected filter, so a name typed without an
+            // extension is saved in the format the user actually picked (PDF is
+            // index 1); HTML stays the default when the dialog opens (index 0).
+            defaultSuffix: selectedNameFilter.index === 1 ? "pdf" : "html"
             onAccepted: Bridge.saveReport(selectedFile.toString())
         }
     }

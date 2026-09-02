@@ -83,52 +83,52 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="603"/>
+        <location filename="../bridge.py" line="611"/>
         <source>Ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="604"/>
+        <location filename="../bridge.py" line="612"/>
         <source>Add an API key in Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="605"/>
+        <location filename="../bridge.py" line="613"/>
         <source>Rules not downloaded — update rules</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="606"/>
+        <location filename="../bridge.py" line="614"/>
         <source>ML model not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="607"/>
+        <location filename="../bridge.py" line="615"/>
         <source>Not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="608"/>
+        <location filename="../bridge.py" line="616"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="609"/>
+        <location filename="../bridge.py" line="617"/>
         <source>Source temporarily unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="610"/>
+        <location filename="../bridge.py" line="618"/>
         <source>Not available on this OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="611"/>
+        <location filename="../bridge.py" line="619"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="612"/>
+        <location filename="../bridge.py" line="620"/>
         <source>File too large for this engine</source>
         <translation type="unfinished"></translation>
     </message>
@@ -174,27 +174,27 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="60"/>
+        <location filename="../qml/Main.qml" line="72"/>
         <source>Scan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="60"/>
+        <location filename="../qml/Main.qml" line="72"/>
         <source>History</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="60"/>
+        <location filename="../qml/Main.qml" line="72"/>
         <source>Quarantine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="61"/>
+        <location filename="../qml/Main.qml" line="73"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="61"/>
+        <location filename="../qml/Main.qml" line="73"/>
         <source>About</source>
         <translation type="unfinished"></translation>
     </message>
@@ -336,6 +336,16 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
     <message>
         <location filename="../qml/pages/ScanPage.qml" line="191"/>
         <source>New scan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="197"/>
+        <source>HTML report (*.html)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="197"/>
+        <source>PDF report (*.pdf)</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

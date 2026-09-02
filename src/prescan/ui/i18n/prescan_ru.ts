@@ -83,52 +83,52 @@
         <translation>Установлено файлов правил YARA: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="603"/>
+        <location filename="../bridge.py" line="611"/>
         <source>Ready</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="604"/>
+        <location filename="../bridge.py" line="612"/>
         <source>Add an API key in Settings</source>
         <translation>Добавьте API-ключ в настройках</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="605"/>
+        <location filename="../bridge.py" line="613"/>
         <source>Rules not downloaded — update rules</source>
         <translation>Правила не загружены — обновите правила</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="606"/>
+        <location filename="../bridge.py" line="614"/>
         <source>ML model not installed</source>
         <translation>ML-модель не установлена</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="607"/>
+        <location filename="../bridge.py" line="615"/>
         <source>Not installed</source>
         <translation>Не установлено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="608"/>
+        <location filename="../bridge.py" line="616"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation>Источник временно недоступен (офлайн)</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="609"/>
+        <location filename="../bridge.py" line="617"/>
         <source>Source temporarily unavailable</source>
         <translation>Источник временно недоступен</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="610"/>
+        <location filename="../bridge.py" line="618"/>
         <source>Not available on this OS</source>
         <translation>Недоступно в этой ОС</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="611"/>
+        <location filename="../bridge.py" line="619"/>
         <source>Disabled</source>
         <translation>Отключено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="612"/>
+        <location filename="../bridge.py" line="620"/>
         <source>File too large for this engine</source>
         <translation>Файл слишком большой для этого движка</translation>
     </message>
@@ -174,27 +174,27 @@
         <translation>PreScan</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="60"/>
+        <location filename="../qml/Main.qml" line="72"/>
         <source>Scan</source>
         <translation>Сканирование</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="60"/>
+        <location filename="../qml/Main.qml" line="72"/>
         <source>History</source>
         <translation>История</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="60"/>
+        <location filename="../qml/Main.qml" line="72"/>
         <source>Quarantine</source>
         <translation>Карантин</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="61"/>
+        <location filename="../qml/Main.qml" line="73"/>
         <source>Settings</source>
         <translation>Настройки</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="61"/>
+        <location filename="../qml/Main.qml" line="73"/>
         <source>About</source>
         <translation>О программе</translation>
     </message>
@@ -341,6 +341,16 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
         <location filename="../qml/pages/ScanPage.qml" line="191"/>
         <source>New scan</source>
         <translation>Новая проверка</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="197"/>
+        <source>HTML report (*.html)</source>
+        <translation>Отчёт HTML (*.html)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="197"/>
+        <source>PDF report (*.pdf)</source>
+        <translation>Отчёт PDF (*.pdf)</translation>
     </message>
 </context>
 <context>

@@ -76,7 +76,8 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 - A verdict with a `risk_score` and the ranked signals behind it.
 - **Quarantine** a dangerous file into an AES-encrypted zip (password `infected`), then
   `list` / `restore` / `purge` it.
-- **History** of past scans, and reports exported as **JSON** or **HTML**.
+- **History** of past scans. Export a report as **HTML or PDF** from the GUI, or as
+  **JSON or HTML** from the CLI.
 
 ### 🧩 Everything else
 - **Bilingual** 🇷🇺 / 🇬🇧 GUI, switchable at runtime.
@@ -101,7 +102,7 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 | Database | [SQLAlchemy 2.0](https://www.sqlalchemy.org/) async + SQLite |
 | Config & secrets | [pydantic](https://docs.pydantic.dev/) · [keyring](https://github.com/jaraco/keyring) |
 | Logging | [structlog](https://www.structlog.org/) (JSON in prod, colored in dev) |
-| Reports | JSON · [Jinja2](https://jinja.palletsprojects.com/) (HTML) |
+| Reports | JSON · [Jinja2](https://jinja.palletsprojects.com/) (HTML) · Qt `QPdfWriter` (PDF, GUI only) |
 | Packaging | [PyInstaller](https://pyinstaller.org/) `--onedir` → `.deb` · AppImage · Inno Setup |
 | Quality | ruff · mypy · pytest · respx · GitHub Actions CI |
 

@@ -277,9 +277,13 @@ def test_save_dialog_suffix_follows_filter(gui: Any, tmp_path: Path) -> None:
     assert dialog is not None, "saveReportDialog not found in the loaded UI"
 
     assert QQmlProperty.read(dialog, "defaultSuffix") == "html"  # default on open
-    QQmlProperty.write(dialog, "selectedNameFilter.index", 1)  # user picks PDF
-    suffix = QQmlProperty.read(dialog, "defaultSuffix")
-    QQmlProperty.write(dialog, "selectedNameFilter.index", 0)  # restore for other tests
+    # The engine (and this dialog) is a session-scoped singleton, so restore the
+    # shared filter index in finally -- otherwise the state leaks into later tests.
+    try:
+        QQmlProperty.write(dialog, "selectedNameFilter.index", 1)  # user picks PDF
+        suffix = QQmlProperty.read(dialog, "defaultSuffix")
+    finally:
+        QQmlProperty.write(dialog, "selectedNameFilter.index", 0)
     assert suffix == "pdf"
 
     # Close the trap end to end: an extensionless name gets this suffix from Qt, and

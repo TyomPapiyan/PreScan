@@ -83,52 +83,52 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="611"/>
+        <location filename="../bridge.py" line="616"/>
         <source>Ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="612"/>
+        <location filename="../bridge.py" line="617"/>
         <source>Add an API key in Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="613"/>
+        <location filename="../bridge.py" line="618"/>
         <source>Rules not downloaded — update rules</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="614"/>
+        <location filename="../bridge.py" line="619"/>
         <source>ML model not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="615"/>
+        <location filename="../bridge.py" line="620"/>
         <source>Not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="616"/>
+        <location filename="../bridge.py" line="621"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="617"/>
+        <location filename="../bridge.py" line="622"/>
         <source>Source temporarily unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="618"/>
+        <location filename="../bridge.py" line="623"/>
         <source>Not available on this OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="619"/>
+        <location filename="../bridge.py" line="624"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="620"/>
+        <location filename="../bridge.py" line="625"/>
         <source>File too large for this engine</source>
         <translation type="unfinished"></translation>
     </message>
@@ -156,12 +156,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HistoryPage.qml" line="88"/>
+        <location filename="../qml/pages/HistoryPage.qml" line="89"/>
         <source>Clear history?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/HistoryPage.qml" line="91"/>
+        <location filename="../qml/pages/HistoryPage.qml" line="92"/>
         <source>This permanently deletes all scan history entries.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -207,47 +207,47 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="22"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="23"/>
         <source>Restore this file?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="28"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="29"/>
         <source>Warning: this file was quarantined as dangerous. Restoring it puts the original malware back on disk. Continue only if you are sure.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="37"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="39"/>
         <source>Delete permanently?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="40"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="42"/>
         <source>This permanently deletes the quarantined file.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="47"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="49"/>
         <source>Quarantine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="50"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="52"/>
         <source>Quarantine is empty.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="77"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="79"/>
         <source>Restore</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="81"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="83"/>
         <source>Re-scan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="85"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="87"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
@@ -432,47 +432,52 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="144"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="147"/>
+        <source>When on, links are checked only by Safe Browsing hash prefixes — a green (safe) verdict for a URL is not possible.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="150"/>
         <source>Disable all network activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="154"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="160"/>
         <source>Scanning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="159"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="165"/>
         <source>Download size limit (MB):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="164"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="170"/>
         <source>Scan timeout (s):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="169"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="175"/>
         <source>Archive extraction depth:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="174"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="180"/>
         <source>Cache TTL (days):</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="185"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="191"/>
         <source>Interface</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="189"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="195"/>
         <source>Theme:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="197"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="203"/>
         <source>Language:</source>
         <translation type="unfinished"></translation>
     </message>

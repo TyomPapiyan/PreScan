@@ -140,6 +140,12 @@ Item {
                         checked: Bridge.onlyHashes
                         onToggled: Bridge.setOnlyHashes(checked)
                     }
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: theme.subtext
+                        text: qsTr("When on, links are checked only by Safe Browsing hash prefixes — a green (safe) verdict for a URL is not possible.")
+                    }
                     CheckBox {
                         text: qsTr("Disable all network activity")
                         checked: !Bridge.allowNetwork

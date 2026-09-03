@@ -160,8 +160,13 @@ class AppConfig(BaseModel):
 
     # --- network / privacy (defaults mirror §9.7 privacy switches) ---
     allow_network: bool = True
-    never_upload_files: bool = True
-    only_send_hashes: bool = True
+    never_upload_files: bool = True  # the real §10.5 guard; never default it off
+    # Default OFF: a URL scan is an explicit action on a URL the user typed, and the
+    # Privacy screen names in red who receives the full URL beforehand (informed
+    # consent). When ON, URL sources that get the full URL are disabled, so a link can
+    # only be checked by Safe Browsing hash prefixes and can never clear to SAFE. For
+    # files this toggle is a no-op -- hash providers structurally send only the hash.
+    only_send_hashes: bool = False
 
     # --- engines ---
     clamd: ClamdSettings = Field(default_factory=ClamdSettings)

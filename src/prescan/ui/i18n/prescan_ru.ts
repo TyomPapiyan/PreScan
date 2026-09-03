@@ -83,52 +83,52 @@
         <translation>Установлено файлов правил YARA: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="611"/>
+        <location filename="../bridge.py" line="616"/>
         <source>Ready</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="612"/>
+        <location filename="../bridge.py" line="617"/>
         <source>Add an API key in Settings</source>
         <translation>Добавьте API-ключ в настройках</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="613"/>
+        <location filename="../bridge.py" line="618"/>
         <source>Rules not downloaded — update rules</source>
         <translation>Правила не загружены — обновите правила</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="614"/>
+        <location filename="../bridge.py" line="619"/>
         <source>ML model not installed</source>
         <translation>ML-модель не установлена</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="615"/>
+        <location filename="../bridge.py" line="620"/>
         <source>Not installed</source>
         <translation>Не установлено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="616"/>
+        <location filename="../bridge.py" line="621"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation>Источник временно недоступен (офлайн)</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="617"/>
+        <location filename="../bridge.py" line="622"/>
         <source>Source temporarily unavailable</source>
         <translation>Источник временно недоступен</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="618"/>
+        <location filename="../bridge.py" line="623"/>
         <source>Not available on this OS</source>
         <translation>Недоступно в этой ОС</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="619"/>
+        <location filename="../bridge.py" line="624"/>
         <source>Disabled</source>
         <translation>Отключено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="620"/>
+        <location filename="../bridge.py" line="625"/>
         <source>File too large for this engine</source>
         <translation>Файл слишком большой для этого движка</translation>
     </message>
@@ -156,12 +156,12 @@
         <translation>Поиск по имени или SHA-256…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HistoryPage.qml" line="88"/>
+        <location filename="../qml/pages/HistoryPage.qml" line="89"/>
         <source>Clear history?</source>
         <translation>Очистить историю?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HistoryPage.qml" line="91"/>
+        <location filename="../qml/pages/HistoryPage.qml" line="92"/>
         <source>This permanently deletes all scan history entries.</source>
         <translation>Это безвозвратно удалит все записи истории проверок.</translation>
     </message>
@@ -207,47 +207,47 @@
         <translation>Восстановить в папку</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="22"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="23"/>
         <source>Restore this file?</source>
         <translation>Восстановить этот файл?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="28"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="29"/>
         <source>Warning: this file was quarantined as dangerous. Restoring it puts the original malware back on disk. Continue only if you are sure.</source>
         <translation>Внимание: этот файл помещён в карантин как опасный. Восстановление вернёт исходную вредоносную программу на диск. Продолжайте, только если уверены.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="37"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="39"/>
         <source>Delete permanently?</source>
         <translation>Удалить безвозвратно?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="40"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="42"/>
         <source>This permanently deletes the quarantined file.</source>
         <translation>Это безвозвратно удалит файл из карантина.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="47"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="49"/>
         <source>Quarantine</source>
         <translation>Карантин</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="50"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="52"/>
         <source>Quarantine is empty.</source>
         <translation>Карантин пуст.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="77"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="79"/>
         <source>Restore</source>
         <translation>Восстановить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="81"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="83"/>
         <source>Re-scan</source>
         <translation>Перепроверить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/QuarantinePage.qml" line="85"/>
+        <location filename="../qml/pages/QuarantinePage.qml" line="87"/>
         <source>Delete</source>
         <translation>Удалить</translation>
     </message>
@@ -436,47 +436,52 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
         <translation>Отправлять только хеши</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="144"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="147"/>
+        <source>When on, links are checked only by Safe Browsing hash prefixes — a green (safe) verdict for a URL is not possible.</source>
+        <translation>При включении ссылки проверяются только по хеш-префиксам Safe Browsing — зелёный (безопасный) вердикт по ссылке невозможен.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="150"/>
         <source>Disable all network activity</source>
         <translation>Отключить всю сетевую активность</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="154"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="160"/>
         <source>Scanning</source>
         <translation>Сканирование</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="159"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="165"/>
         <source>Download size limit (MB):</source>
         <translation>Лимит размера загрузки (МБ):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="164"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="170"/>
         <source>Scan timeout (s):</source>
         <translation>Тайм-аут проверки (с):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="169"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="175"/>
         <source>Archive extraction depth:</source>
         <translation>Глубина распаковки архивов:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="174"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="180"/>
         <source>Cache TTL (days):</source>
         <translation>Срок жизни кэша (дней):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="185"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="191"/>
         <source>Interface</source>
         <translation>Интерфейс</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="189"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="195"/>
         <source>Theme:</source>
         <translation>Тема:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="197"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="203"/>
         <source>Language:</source>
         <translation>Язык:</translation>
     </message>

@@ -97,6 +97,23 @@ jobs:
         if: runner.os == 'Linux'
         run: dpkg -c dist/prescan_*_amd64.deb | grep -E '/opt/prescan/licenses/' | head
 
+      - name: Prove the launcher + icons ship inside the .deb (dock name/icon)
+        if: runner.os == 'Linux'
+        run: |
+          set -e
+          deb=$(ls dist/prescan_*_amd64.deb)
+          echo "== desktop entry =="
+          dpkg -c "$deb" | grep -E '/usr/share/applications/prescan\.desktop$'
+          echo "== hicolor icons =="
+          dpkg -c "$deb" | grep -E '/usr/share/icons/hicolor/.*/apps/prescan\.(png|svg)$'
+          n=$(dpkg -c "$deb" | grep -cE '/usr/share/icons/hicolor/.*/apps/prescan\.(png|svg)$')
+          [ "$n" -ge 9 ] || { echo "::error::expected >=9 icon files, found $n"; exit 1; }
+          echo "== maintainer scripts refresh the caches =="
+          dpkg -e "$deb" /tmp/deb-control
+          grep -q update-desktop-database /tmp/deb-control/postinst
+          grep -q gtk-update-icon-cache /tmp/deb-control/postinst
+          echo "postinst refreshes both caches: OK"
+
       - name: Closed-loop from the INSTALLED .deb in ubuntu:24.04 (no Python; §12)
         if: runner.os == 'Linux'
         run: |

@@ -55,6 +55,24 @@ Description: Pre-execution file & link malware scanner
  you download it. Not an antivirus; verdicts are informational.
 EOF
 
+# Refresh the desktop database and icon cache so the launcher name + shield icon
+# appear right after `apt install`, without relying on the desktop-file-utils /
+# hicolor-icon-theme dpkg triggers being active. Best effort: never fail install.
+for script in postinst postrm; do
+    cat > "$pkg/DEBIAN/$script" <<'EOF'
+#!/bin/sh
+set -e
+if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+fi
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -q -f -t /usr/share/icons/hicolor || true
+fi
+exit 0
+EOF
+    chmod 0755 "$pkg/DEBIAN/$script"
+done
+
 mkdir -p "$outdir"
 deb="$outdir/prescan_${version}_amd64.deb"
 dpkg-deb --root-owner-group --build "$pkg" "$deb"

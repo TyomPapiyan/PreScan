@@ -77,7 +77,8 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 - **Quarantine** a dangerous file into an AES-encrypted zip (password `infected`), then
   `list` / `restore` / `purge` it.
 - **History** of past scans. Export a report as **HTML or PDF** from the GUI, or as
-  **JSON or HTML** from the CLI.
+  **JSON or HTML** from the CLI. (PDF export lands in a later release; the published
+  **v0.1.0** build saves HTML from the GUI.)
 
 ### 🧩 Everything else
 - **Bilingual** 🇷🇺 / 🇬🇧 GUI, switchable at runtime.

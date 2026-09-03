@@ -589,9 +589,14 @@ class Bridge(QObject):
         try:
             availability, detail = await prov.availability()
             if availability.value != "ready":
-                self.keyCheckResult.emit(
-                    provider, self.availabilityText(availability.value, detail)
+                # For a probe, an ERROR carries a specific reason (e.g. an invalid
+                # key); show it verbatim rather than the generic availability text.
+                msg = (
+                    detail
+                    if availability is Availability.ERROR
+                    else self.availabilityText(availability.value, detail)
                 )
+                self.keyCheckResult.emit(provider, msg)
                 return
             quota = await prov.remaining_quota()
             self.keyCheckResult.emit(provider, f"OK · quota: {quota}" if quota else "OK")

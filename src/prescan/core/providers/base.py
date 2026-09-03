@@ -76,11 +76,16 @@ class HttpProvider:
         self._timeout_s = timeout_s
 
     async def availability(self) -> tuple[Availability, str]:
-        """OFFLINE when network is disabled, NO_KEY when a required key is absent."""
+        """OFFLINE (no network), NO_KEY (missing), ERROR (unusable key), else READY."""
         if not self._allow_network:
             return Availability.OFFLINE, "network disabled"
         if self.requires_key and not self._api_key:
             return Availability.NO_KEY, "API key not configured"
+        if self.requires_key and self._api_key and not self._api_key.isascii():
+            # A non-ASCII key cannot even be sent as an HTTP header (httpx encodes
+            # header values as ASCII), so catch it here and degrade to a clear ERROR
+            # instead of crashing mid-request with an UnicodeEncodeError traceback.
+            return Availability.ERROR, "API key looks invalid (non-ASCII characters)"
         return Availability.READY, "ready"
 
     async def _request(

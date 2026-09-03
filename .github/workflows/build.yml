@@ -118,6 +118,23 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           set -e
+          # Resolvability probe (mounted into the container): a launcher entry works
+          # only if GLib can build a DesktopAppInfo from it, which needs Exec to point
+          # at a real command -- "the binary runs" is NOT the same fact.
+          cat > dist/check_desktop.py <<'PY'
+          import gi
+
+          gi.require_version("Gio", "2.0")
+          from gi.repository import Gio
+
+          info = None
+          try:
+              info = Gio.DesktopAppInfo.new("prescan.desktop")
+          except TypeError:  # PySide/GI raise on a NULL return
+              pass
+          assert info is not None, "FAIL: Gio.DesktopAppInfo.new('prescan.desktop') returned NULL"
+          print("DesktopAppInfo OK ->", info.get_commandline())
+          PY
           # §12: prove the PACKAGE runs on a clean Ubuntu without Python. apt installs
           # the .deb and pulls its Depends itself -- if a runtime lib were missing from
           # Depends the GUI would fail here (the run #1 libGL.so.1 error), after install.
@@ -127,6 +144,11 @@ jobs:
             apt-get install -y -qq /deb/prescan_*_amd64.deb
             prescan version
             prescan engines
+            # Prove the installed launcher entry RESOLVES (Exec -> real /usr/bin/prescan),
+            # not just that the binary runs. python3-gi + desktop-file-utils are test-only.
+            apt-get install -y -qq python3-gi desktop-file-utils >/dev/null
+            echo "== desktop entry resolvability =="; python3 /deb/check_desktop.py
+            desktop-file-validate /usr/share/applications/prescan.desktop && echo "desktop-file-validate: OK"
             # The way a real user makes the installed app useful: fetch the model from
             # the release (SHA-256 checked) and confirm the ml engine flips to READY.
             # This also proves the frozen platformdirs paths resolve correctly.

@@ -142,7 +142,19 @@ def score(
         _max_severity([s for s in signals if s.source != "ml"]) < _SEVERITY_ORDER[Severity.LOW]
     )
 
-    if had_authoritative_source and no_low_or_worse and ml_ok:
+    # §8.3 SAFE requires an authoritative source and no LOW+ signal. The clearance
+    # differs by target because URLs have no ML probability and no code signature:
+    #   * files -- ml_ok (ml_prob < 0.20 or a trusted signature, the §16.12 path);
+    #   * URLs  -- an authoritative *clean* source answered (VirusTotal: URL known and
+    #     malicious == 0). Threat-only feeds (Safe Browsing, URLhaus) never clear, and
+    #     ml_ok is inapplicable, so it is not required here.
+    if target_noun == "URL":
+        has_authoritative_clean = any(s.data.get("authoritative_clean") is True for s in signals)
+        cleared = has_authoritative_clean and no_low_or_worse
+    else:
+        cleared = had_authoritative_source and no_low_or_worse and ml_ok
+
+    if cleared:
         risk = min(_SAFE_CEIL, base_score)
         return (
             Verdict.SAFE,

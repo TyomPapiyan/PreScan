@@ -82,7 +82,18 @@ class VirusTotalProvider(HttpProvider):
             return [self._detection(malicious, total, decisive=True, severity=Severity.CRITICAL)]
         if malicious >= 1:
             return [self._detection(malicious, total, decisive=False, severity=Severity.MEDIUM)]
-        return []
+        # Known to VirusTotal and clean: the authoritative-clean source for URLs (§8.3),
+        # mirroring lookup_hash. An *unknown* URL is a 404 above -> no signal, so it can
+        # never be cleared to SAFE on VirusTotal's silence.
+        return [
+            self._signal(
+                severity=Severity.INFO,
+                title_key="signal.vt.url_clean",
+                title_en=f"VirusTotal: 0/{total} engines flagged this URL",
+                weight=weight("reputation", "vt_known_clean", -20),
+                data={"malicious": 0, "total": total, "authoritative_clean": True},
+            )
+        ]
 
     def _detection(
         self, malicious: int, total: int, *, decisive: bool, severity: Severity

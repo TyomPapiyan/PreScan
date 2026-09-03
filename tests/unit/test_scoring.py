@@ -198,3 +198,32 @@ def test_trusted_signature_does_not_rescue_strongly_malicious_ml() -> None:
 def test_clean_with_no_sources_is_unknown() -> None:
     verdict, _r, _k, _rr = score([], had_authoritative_source=False)
     assert verdict is Verdict.UNKNOWN
+
+
+# --------------------------------------------------------------------------- #
+# §8.3 for URLs — SAFE needs an authoritative-CLEAN source (VirusTotal known &
+# clean), never the silence of threat-only feeds; ml_ok does not apply to URLs.
+# --------------------------------------------------------------------------- #
+def _url_authoritative_clean() -> Signal:
+    return Signal(
+        source="virustotal",
+        kind=SourceKind.CLOUD_REPUTATION,
+        severity=Severity.INFO,
+        title_key="signal.vt.url_clean",
+        title_en="VirusTotal: 0/70 engines flagged this URL",
+        data={"malicious": 0, "total": 70, "authoritative_clean": True},
+    )
+
+
+def test_url_safe_with_authoritative_clean_source() -> None:
+    verdict, risk, _k, _r = score(
+        [_url_authoritative_clean()], had_authoritative_source=True, target_noun="URL"
+    )
+    assert verdict is Verdict.SAFE
+    assert risk <= 20
+
+
+def test_url_unknown_without_authoritative_clean_source() -> None:
+    # Threat-only feeds answered and found nothing (no signal); no VirusTotal clean.
+    verdict, _r, _k, _rr = score([], had_authoritative_source=True, target_noun="URL")
+    assert verdict is Verdict.UNKNOWN

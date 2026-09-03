@@ -143,6 +143,10 @@ sudo apt install libgl1 libegl1 libglib2.0-0 libxkbcommon0 libdbus-1-3
 chmod +x PreScan-0.1.0-x86_64.AppImage
 ./PreScan-0.1.0-x86_64.AppImage
 ```
+> The AppImage carries its own `.desktop` and shield icon, but an AppImage installs
+> nothing system-wide, so the dock shows the shield + **PreScan** only if you use a
+> desktop-integration helper (`appimaged` or AppImageLauncher). Without one the window
+> may appear under a generic icon. The `.deb` integrates automatically.
 
 **Windows 10 / 11:** run `PreScan-Setup-0.1.0.exe`.
 

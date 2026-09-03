@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -18,9 +19,82 @@ def test_style_is_fluent_winui3(gui: Any) -> None:
 
 
 def test_main_qml_loads_with_zero_warnings(gui: Any) -> None:
-    """Loading Main.qml must emit no QML warnings/errors (§10.1 wiring is sound)."""
+    """Main.qml loads with no gross QML errors in the (already-warm) test process.
+
+    Scope, stated honestly: the session engine is built inside the warm pytest
+    process, where Qt no longer re-reports first-load-only binding loops. So this
+    catches load failures -- a missing file, a syntax error, a bad import, an
+    unresolved type -- but NOT implicit-size binding loops, which fire only on a
+    cold first load. Those are guarded structurally instead (see
+    test_confirmation_dialogs_have_explicit_width): the binding-loop warning cannot
+    be asserted reliably because its detection depends on process/environment state
+    and does not fire under the hermetic isolation the tests (and CI) run in.
+    """
     assert gui.engine.rootObjects(), "Main.qml failed to load"
     assert gui.load_warnings == [], f"QML warnings during load: {gui.load_warnings}"
+
+
+_QML_PAGES = Path(__file__).resolve().parents[2] / "src" / "prescan" / "ui" / "qml" / "pages"
+
+
+def _dialog_blocks(qml: str) -> list[str]:
+    """Return the source of each top-level ``Dialog { ... }`` block, brace-matched.
+
+    Matches the ``Dialog`` type only (the lookbehind skips ``FileDialog`` /
+    ``FolderDialog``). The dialog bodies contain no braces inside string literals,
+    so a plain brace counter is exact.
+    """
+    blocks: list[str] = []
+    for match in re.finditer(r"(?<![A-Za-z])Dialog\s*\{", qml):
+        depth, k = 0, qml.index("{", match.start())
+        while k < len(qml):
+            depth += 1 if qml[k] == "{" else -1 if qml[k] == "}" else 0
+            if depth == 0:
+                break
+            k += 1
+        blocks.append(qml[match.start() : k + 1])
+    return blocks
+
+
+def _sets_own_width(dialog_block: str) -> bool:
+    """True if the Dialog sets ``width`` on *itself* (brace-depth 1), not on a child.
+
+    A nested ``Label { width: parent.width }`` must NOT count -- checking for any
+    ``width:`` in the block would pass even with the Dialog's own width removed, which
+    is exactly the loop we are guarding against.
+    """
+    depth = 0
+    for match in re.finditer(r"\{|\}|(?<![A-Za-z.])width\s*:", dialog_block):
+        token = match.group()
+        if token == "{":
+            depth += 1
+        elif token == "}":
+            depth -= 1
+        elif depth == 1:  # a `width:` that is a direct property of the Dialog
+            return True
+    return False
+
+
+@pytest.mark.parametrize(("page", "count"), [("QuarantinePage.qml", 2), ("HistoryPage.qml", 1)])
+def test_confirmation_dialogs_have_explicit_width(page: str, count: int) -> None:
+    """Every confirmation Dialog must set an explicit ``width`` on itself -- a
+    deterministic guard for a defect that a warnings test cannot catch.
+
+    Without an explicit width these FluentWinUI3 dialogs let ``implicitWidth`` derive
+    from content whose width in turn follows the dialog, and Qt prints
+    ``Binding loop detected for property "implicitWidth"`` at COLD startup. That
+    warning is unassertable -- its detection depends on process/environment state and
+    does not fire under the hermetic isolation the tests run in (bisected to
+    XDG_CONFIG_HOME) -- so this reads the source instead. Remove a Dialog's own
+    ``width`` line and this test goes red with the reason, not silence.
+    """
+    text = (_QML_PAGES / page).read_text(encoding="utf-8")
+    blocks = _dialog_blocks(text)
+    assert len(blocks) == count, f"{page}: expected {count} Dialog block(s), found {len(blocks)}"
+    for block in blocks:
+        assert _sets_own_width(block), (
+            f"a Dialog in {page} does not set its own width -- see this test's docstring"
+        )
 
 
 def test_app_icon_is_multisize(gui: Any) -> None:

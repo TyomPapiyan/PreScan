@@ -50,9 +50,7 @@ async def test_only_send_hashes_disables_full_url_sources(monkeypatch: pytest.Mo
 
     stages: list = []
     unavailable: list[str] = []
-    signals, _had_auth = await pipeline._run_url_providers(
-        "https://example.com/", stages, unavailable, None
-    )
+    signals = await pipeline._run_url_providers("https://example.com/", stages, unavailable, None)
 
     by_id = {s.stage_id: s for s in stages}
     for name in ("virustotal", "urlscan", "urlhaus"):

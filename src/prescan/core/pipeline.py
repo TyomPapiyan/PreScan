@@ -524,14 +524,9 @@ class Pipeline:
             signals += heur
             st.summary = f"{len(heur)} signal(s)"
 
-        had_authoritative = False
         if net and not cancel.is_set():
             # Stage 3: URL reputation providers
-            rep, rep_auth = await self._run_url_providers(
-                request.url, stages, unavailable, on_stage
-            )
-            signals += rep
-            had_authoritative = had_authoritative or rep_auth
+            signals += await self._run_url_providers(request.url, stages, unavailable, on_stage)
 
             # Stage 4: domain age (RDAP)
             with self._stage("domain_age", "stage.domain_age", stages, on_stage) as st:
@@ -584,13 +579,15 @@ class Pipeline:
                     )
                 st.summary = f"{len(info.redirect_chain)} redirect(s)"
 
-            # Stage 8: download + full file analysis (§6), only on explicit consent
+            # Stage 8: download + full file analysis (§6), only on explicit consent.
+            # The downloaded body's engine authority does not clear a URL -- §8.3 for
+            # URLs needs an authoritative-clean reputation signal -- so its had_auth
+            # flag is intentionally not consumed here.
             if request.allow_download and not cancel.is_set():
-                file_info_dl, file_signals, dl_auth = await self._download_and_scan(
+                file_info_dl, file_signals, _dl_auth = await self._download_and_scan(
                     request, stages, unavailable, on_stage, cancel
                 )
                 signals += file_signals
-                had_authoritative = had_authoritative or dl_auth
         else:
             self._skip_named(
                 "url_reputation",
@@ -602,9 +599,11 @@ class Pipeline:
                 title_key="stage.url_reputation",
             )
 
+        # URL SAFE is decided by an authoritative-clean signal (§8.3), so had_authoritative
+        # is not part of the URL rule -- pass False rather than a value that is ignored.
         verdict, risk, reason_key, reason_en = self._score(
             signals,
-            had_authoritative=had_authoritative,
+            had_authoritative=False,
             cancelled=cancel.is_set(),
             target_noun="URL",
         )
@@ -675,8 +674,13 @@ class Pipeline:
         stages: list[StageResult],
         unavailable: list[str],
         on_stage: OnStage | None,
-    ) -> tuple[list[Signal], bool]:
-        """Query URL-reputation providers concurrently (§7 stage 3)."""
+    ) -> list[Signal]:
+        """Query URL-reputation providers concurrently (§7 stage 3).
+
+        Returns only signals: a URL is cleared to SAFE by an ``authoritative_clean``
+        signal (VirusTotal known & clean, §8.3), not by the mere fact that a provider
+        answered -- so there is no separate "had authoritative" flag to return.
+        """
         providers = build_url_providers(self._limiter, allow_network=True)
         only_hashes = self._config.only_send_hashes
         runnable: list[Provider] = []
@@ -727,7 +731,6 @@ class Pipeline:
             *(p.lookup_url(url) for p in runnable), return_exceptions=True
         )
         collected: list[Signal] = []
-        had_authoritative = False
         for provider, outcome in zip(runnable, results, strict=True):
             st = stage_by_name[provider.name]
             st.finished_at = datetime.now(UTC)
@@ -740,7 +743,6 @@ class Pipeline:
                 st.status = StageStatus.DONE
                 st.summary = _summarise(outcome)
                 collected.extend(outcome)
-                had_authoritative = True  # a reputation source answered
             _notify(on_stage, st)
         if privacy_disabled:
             # Surface the reason in the "why this verdict" block: with the full-URL
@@ -759,7 +761,7 @@ class Pipeline:
                     ),
                 )
             )
-        return collected, had_authoritative
+        return collected
 
     def _url_signal(self, severity: Severity, weight_value: int, key: str, title: str) -> Signal:
         # These are §8.2 rows (young domain, redirect domain change, invalid TLS):

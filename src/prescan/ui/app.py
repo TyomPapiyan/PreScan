@@ -14,6 +14,7 @@ post-M7 task.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 from pathlib import Path
@@ -113,6 +114,33 @@ def build_engine() -> tuple[QQmlApplicationEngine, Bridge]:
     return engine, bridge
 
 
+def _set_app_identity() -> None:
+    """Set the process identity *before* the QGuiApplication is constructed.
+
+    Order matters: the Wayland ``app_id`` (matched to ``prescan.desktop`` for the
+    dock name + shield icon) and the xdg-desktop-portal app-id registration are both
+    taken at startup. Setting the desktop file name only afterwards makes the portal
+    reject the change ("connection already associated with an application id") and
+    leaves the shell showing the raw app-id with a generic icon. ``StartupWMClass``
+    in the desktop file covers the X11/XWayland case.
+
+    On Windows an explicit AppUserModelID is what makes the taskbar use our icon and
+    group our windows, instead of falling back to the generic Python/Qt host id.
+    """
+    from PySide6.QtGui import QGuiApplication
+
+    QGuiApplication.setApplicationName("PreScan")
+    QGuiApplication.setApplicationDisplayName("PreScan")
+    QGuiApplication.setOrganizationName("PreScan")
+    QGuiApplication.setDesktopFileName("prescan")
+
+    if sys.platform == "win32":
+        with contextlib.suppress(Exception):  # cosmetic; never block startup on it
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("PreScan")
+
+
 def run() -> int:
     """Launch the PreScan GUI. Blocks until the window is closed."""
     import asyncio
@@ -121,15 +149,8 @@ def run() -> int:
     from PySide6.QtGui import QGuiApplication
 
     configure_style()
+    _set_app_identity()  # must precede QGuiApplication so the app-id is ours from t=0
     app = QGuiApplication(sys.argv)
-    # Identity in the OS shell: without a display name + desktop file the window
-    # shows up as "python3" with a gear icon in the dock/taskbar.
-    app.setApplicationName("PreScan")
-    app.setApplicationDisplayName("PreScan")
-    app.setOrganizationName("PreScan")
-    # setDesktopFileName is what binds the window to prescan.desktop on GNOME/Wayland;
-    # StartupWMClass in that file covers X11. Both are needed to drop "python3".
-    QGuiApplication.setDesktopFileName("prescan")
     app.setWindowIcon(app_icon())  # type: ignore[arg-type]
     loop = qasync.QEventLoop(app)
     asyncio.set_event_loop(loop)

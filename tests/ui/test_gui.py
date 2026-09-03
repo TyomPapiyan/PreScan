@@ -113,9 +113,25 @@ def test_desktop_file_binds_identity() -> None:
 
     txt = Path("packaging/prescan.desktop").read_text(encoding="utf-8")
     assert "Name=PreScan" in txt
-    assert "Icon=prescan" in txt
-    assert "StartupWMClass=prescan" in txt  # X11
+    assert "Icon=prescan" in txt  # resolved via the icon theme -> hicolor prescan.png
+    assert "Exec=prescan" in txt
+    assert "StartupWMClass=prescan" in txt  # X11/XWayland (Wayland uses setDesktopFileName)
     assert "Categories=Utility;Security;" in txt
+
+
+def test_icon_resources_cover_required_sizes() -> None:
+    """The shield icon must ship in every size the packagers install.
+
+    build-deb.sh and install-desktop-entry.sh copy ``prescan_<size>.png`` into the
+    hicolor theme plus the scalable ``prescan.svg``; ``prescan.ico`` is embedded in
+    the Windows exe (prescan.spec) and used as the Inno installer icon. A missing
+    file here means a generic gear/blank icon on that platform, so guard them.
+    """
+    icons = Path("src/prescan/resources/icons")
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
+        assert (icons / f"prescan_{size}.png").is_file(), f"missing prescan_{size}.png"
+    assert (icons / "prescan.svg").is_file(), "missing scalable prescan.svg"
+    assert (icons / "prescan.ico").is_file(), "missing Windows prescan.ico"
 
 
 def test_availability_text_covers_too_large(gui: Any) -> None:

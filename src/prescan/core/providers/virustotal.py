@@ -25,6 +25,7 @@ class VirusTotalProvider(HttpProvider):
     kind: ClassVar[SourceKind] = SourceKind.CLOUD_REPUTATION
     stage_id: ClassVar[str] = "reputation"
     requires_key: ClassVar[bool] = True
+    sends_full_url: ClassVar[bool] = True  # full URL leaves; 'only send hashes' disables it
     supports_upload: ClassVar[bool] = True
     max_upload_bytes: ClassVar[int] = 650 * 1024 * 1024
 

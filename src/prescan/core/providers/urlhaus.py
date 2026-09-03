@@ -22,6 +22,7 @@ class UrlhausProvider(HttpProvider):
     kind: ClassVar[SourceKind] = SourceKind.CLOUD_REPUTATION
     stage_id: ClassVar[str] = "url_reputation"
     requires_key: ClassVar[bool] = True
+    sends_full_url: ClassVar[bool] = True  # full URL leaves; 'only send hashes' disables it
     supports_upload: ClassVar[bool] = False
     max_upload_bytes: ClassVar[int] = 0
 

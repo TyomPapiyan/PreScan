@@ -678,8 +678,25 @@ class Pipeline:
     ) -> tuple[list[Signal], bool]:
         """Query URL-reputation providers concurrently (§7 stage 3)."""
         providers = build_url_providers(self._limiter, allow_network=True)
+        only_hashes = self._config.only_send_hashes
         runnable: list[Provider] = []
+        privacy_disabled: list[str] = []
         for provider in providers:
+            if only_hashes and provider.sends_full_url:
+                # "Only send hashes" is on: sources that would receive the full URL
+                # are switched off by the user -- DISABLED, not broken (§6.2). They
+                # still count as unavailable so the report is honestly incomplete.
+                self._skip_named(
+                    provider.name,
+                    Availability.DISABLED,
+                    "off: privacy setting sends only hashes",
+                    stages,
+                    unavailable,
+                    on_stage,
+                    title_key="stage.url_reputation",
+                )
+                privacy_disabled.append(provider.name)
+                continue
             availability, detail = await provider.availability()
             if availability is Availability.READY:
                 runnable.append(provider)
@@ -725,6 +742,23 @@ class Pipeline:
                 collected.extend(outcome)
                 had_authoritative = True  # a reputation source answered
             _notify(on_stage, st)
+        if privacy_disabled:
+            # Surface the reason in the "why this verdict" block: with the full-URL
+            # sources off there is no authoritative-clean source, so a URL can only be
+            # UNKNOWN or worse -- never SAFE -- until the setting is changed.
+            collected.append(
+                Signal(
+                    source="privacy",
+                    kind=SourceKind.HEURISTIC,
+                    severity=Severity.INFO,
+                    title_key="signal.url.privacy_sources_disabled",
+                    title_en=(
+                        f"Full-URL sources ({', '.join(privacy_disabled)}) are off because "
+                        "'only send hashes' is enabled; a URL cannot be cleared to SAFE "
+                        "without an authoritative-clean source"
+                    ),
+                )
+            )
         return collected, had_authoritative
 
     def _url_signal(self, severity: Severity, weight_value: int, key: str, title: str) -> Signal:

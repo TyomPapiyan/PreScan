@@ -23,6 +23,10 @@ class Provider(Protocol):
     requires_key: ClassVar[bool]
     supports_upload: ClassVar[bool]
     max_upload_bytes: ClassVar[int]
+    #: True if this source receives the *full* URL on ``lookup_url`` (VirusTotal,
+    #: urlscan, URLhaus). The "only send hashes" privacy setting disables these for
+    #: URL scans; Safe Browsing (hash prefixes) sets it False and stays on.
+    sends_full_url: ClassVar[bool]
 
     async def availability(self) -> tuple[Availability, str]: ...
 
@@ -56,6 +60,7 @@ class HttpProvider:
     requires_key: ClassVar[bool] = True
     supports_upload: ClassVar[bool] = False
     max_upload_bytes: ClassVar[int] = 0
+    sends_full_url: ClassVar[bool] = False  # overridden True by full-URL providers
 
     def __init__(
         self,

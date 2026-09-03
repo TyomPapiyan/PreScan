@@ -14,8 +14,27 @@ apps_dir="$data_home/applications"
 hicolor="$data_home/icons/hicolor"
 
 mkdir -p "$apps_dir"
-install -m 0644 "$here/prescan.desktop" "$apps_dir/prescan.desktop"
-echo "installed $apps_dir/prescan.desktop"
+
+# The installed entry must launch with an absolute command that the system can
+# resolve. Two reasons the bare "Exec=prescan" fails on a source/venv install:
+#   1. the venv's bin is only on PATH while the venv is active, so GLib/GNOME cannot
+#      resolve the entry -- Gio.DesktopAppInfo.new returns NULL, gtk-launch says "no
+#      such application", the window is never matched to this .desktop, and the shell
+#      shows the raw app-id with a generic gear;
+#   2. the "prescan" console script is the CLI (shows --help on no args); the GUI is
+#      "python -m prescan".
+# So bake in the absolute venv python and launch the module. The file in packaging/
+# keeps Exec=prescan for the .deb, where /usr/bin/prescan is the GUI-dispatching
+# bundle and is a real command on PATH.
+py="$(python3 -c 'import sys, importlib.util as u; print(sys.executable if u.find_spec("prescan") else "")' 2>/dev/null || true)"
+if [ -z "${py:-}" ] || [ ! -x "$py" ]; then
+    echo "error: could not find a python with 'prescan' importable." >&2
+    echo "  Activate the venv and run 'pip install -e .' first, then re-run this." >&2
+    exit 1
+fi
+sed "s|^Exec=prescan\$|Exec=$py -m prescan|" "$here/prescan.desktop" > "$apps_dir/prescan.desktop"
+chmod 0644 "$apps_dir/prescan.desktop"
+echo "installed $apps_dir/prescan.desktop (Exec=$py -m prescan)"
 
 for size in 16 24 32 48 64 128 256 512; do
     dest="$hicolor/${size}x${size}/apps"

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
@@ -9,7 +12,7 @@ import httpx
 import structlog
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from prescan.core.models import Availability, Signal, SourceKind
+from prescan.core.models import Availability, Signal, SourceKind, UploadOutcome
 from prescan.core.ratelimit import RateLimiter
 
 log = structlog.get_logger(__name__)
@@ -36,8 +39,10 @@ class Provider(Protocol):
 
     async def lookup_url(self, url: str) -> list[Signal]: ...
 
-    async def upload_file(self, path: Path) -> list[Signal]:
-        """Stage 3 only. Called exclusively after explicit user consent."""
+    async def upload_file(
+        self, path: Path, *, cancel: asyncio.Event | None = None
+    ) -> UploadOutcome:
+        """Stage 13. Called only after the lock is off and explicit user consent."""
         ...
 
     async def remaining_quota(self) -> str | None:
@@ -129,8 +134,19 @@ class HttpProvider:
     async def lookup_url(self, url: str) -> list[Signal]:
         return []
 
-    async def upload_file(self, path: Path) -> list[Signal]:
-        return []
+    async def upload_file(
+        self,
+        path: Path,
+        *,
+        cancel: asyncio.Event | None = None,
+        now: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] | None = None,
+    ) -> UploadOutcome:
+        """Default: this provider does not upload. Upload-capable providers override it
+        (and must -- see the structural test guarding supports_upload)."""
+        return UploadOutcome(
+            availability=Availability.DISABLED, detail="upload not supported by this provider"
+        )
 
     async def remaining_quota(self) -> str | None:
         return None

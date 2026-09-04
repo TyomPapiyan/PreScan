@@ -136,6 +136,24 @@ class Signal(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)  # raw payload for the report
 
 
+class UploadOutcome(BaseModel):
+    """Result of a stage-13 cloud upload (§6.2).
+
+    ``sent`` records that the file bytes left the machine. It is set the instant the
+    upload succeeds and is never cleared -- even if the later poll times out, is
+    cancelled, or errors -- so the report can never falsely claim the file stayed put.
+    ``availability`` drives the stage: READY when a verdict came back, ERROR otherwise.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    sent: bool = False
+    sent_at: datetime | None = None
+    signals: list[Signal] = Field(default_factory=list)
+    availability: Availability = Availability.ERROR
+    detail: str = ""
+
+
 # --------------------------------------------------------------------------- #
 # Target descriptions
 # --------------------------------------------------------------------------- #

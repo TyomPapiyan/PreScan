@@ -23,7 +23,10 @@ class MetaDefenderProvider(HttpProvider):
     kind: ClassVar[SourceKind] = SourceKind.CLOUD_REPUTATION
     stage_id: ClassVar[str] = "reputation"
     requires_key: ClassVar[bool] = True
-    supports_upload: ClassVar[bool] = True
+    # False until upload_file is actually implemented (a separate task): declaring the
+    # capability without an override is the "promise without delivery" the structural
+    # test in tests/providers/test_upload_capability.py forbids. Cap kept for later.
+    supports_upload: ClassVar[bool] = False
     max_upload_bytes: ClassVar[int] = 140 * 1024 * 1024
 
     async def lookup_hash(self, sha256: str) -> list[Signal]:

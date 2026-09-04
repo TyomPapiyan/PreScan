@@ -43,7 +43,11 @@ from prescan.core.models import (
     UrlInfo,
     Verdict,
 )
-from prescan.core.providers import build_hash_providers, build_url_providers
+from prescan.core.providers import (
+    build_hash_providers,
+    build_upload_provider,
+    build_url_providers,
+)
 from prescan.core.providers.base import Provider
 from prescan.core.ratelimit import RateLimiter
 from prescan.core.scoring import score, weight
@@ -97,6 +101,8 @@ class Pipeline:
         signals: list[Signal] = []
         unavailable: list[str] = []
         file_info: FileInfo | None = None
+        uploaded_to: str | None = None
+        uploaded_at: datetime | None = None
 
         try:
             file_info = await self._collect_file_info(request.file_path, stages, on_stage, cancel)
@@ -124,6 +130,25 @@ class Pipeline:
                     )
                     signals += rep_signals
                     had_authoritative = had_authoritative or rep_authoritative
+
+                # Stage 13: cloud upload. Consent-gated -- the lock (never_upload_files)
+                # or a missing per-run consent removes the stage entirely (§6.2): a user
+                # opting out is NOT an unavailable source, so it never marks the scan
+                # incomplete (that flag must mean "a source tried and failed").
+                if (
+                    request.allow_cloud_upload
+                    and not self._config.never_upload_files
+                    and not cancel.is_set()
+                ):
+                    up_signals, uploaded_to, uploaded_at = await self._run_cloud_upload(
+                        file_info, signals, request, stages, unavailable, on_stage, cancel
+                    )
+                    signals += up_signals
+                    # A clean cloud-scan result is authoritative, on par with a clean
+                    # hash lookup (§8.3, point 14) -- so it can clear the file to SAFE.
+                    had_authoritative = had_authoritative or any(
+                        s.data.get("authoritative_clean") is True for s in up_signals
+                    )
 
             verdict, risk, reason_key, reason_en = self._score(
                 signals, had_authoritative=had_authoritative, cancelled=cancel.is_set()
@@ -155,6 +180,8 @@ class Pipeline:
             verdict_reason_en=reason_en,
             incomplete=bool(unavailable) or cancel.is_set(),
             unavailable_sources=unavailable,
+            uploaded_to=uploaded_to,
+            uploaded_at=uploaded_at,
         )
 
         # Persist a completed, non-cached scan to cache and history.
@@ -364,6 +391,83 @@ class Pipeline:
             _notify(on_stage, st)
 
         return collected, had_authoritative
+
+    async def _run_cloud_upload(
+        self,
+        file_info: FileInfo,
+        signals_so_far: list[Signal],
+        request: ScanRequest,
+        stages: list[StageResult],
+        unavailable: list[str],
+        on_stage: OnStage | None,
+        cancel: asyncio.Event,
+    ) -> tuple[list[Signal], str | None, datetime | None]:
+        """Stage 13: upload the file for a fresh cloud scan (reached only with consent).
+
+        "No point uploading" gates (already dangerous locally, or the cloud already
+        knows the file) do NOT mark the scan incomplete -- they explain themselves with
+        an INFO signal in the 'why' block (point 11). Only a consented stage that then
+        cannot run (NO_KEY / TOO_LARGE / OFFLINE / ERROR) is unavailable (§6.1).
+        """
+        provider = build_upload_provider(
+            self._limiter, allow_network=request.allow_network and self._config.allow_network
+        )
+        if any(s.decisive for s in signals_so_far):
+            reason = "the file is already flagged dangerous locally"
+            return [self._cloud_skip_info(reason)], None, None
+        # "Unknown to the cloud" is read from the reputation result (§6 stage 13): a
+        # VirusTotal signal for this file means the cloud already has it -> no upload.
+        if any(s.source == provider.name for s in signals_so_far):
+            return [self._cloud_skip_info("the cloud already knows this file")], None, None
+
+        availability, detail = await provider.availability()
+        if availability is not Availability.READY:
+            self._skip_named(
+                "cloud_upload",
+                availability,
+                detail,
+                stages,
+                unavailable,
+                on_stage,
+                title_key="stage.cloud_upload",
+            )
+            return [], None, None
+        if file_info.size > provider.max_upload_bytes:
+            self._skip_named(
+                "cloud_upload",
+                Availability.TOO_LARGE,
+                f"file exceeds the provider limit ({provider.max_upload_bytes} bytes)",
+                stages,
+                unavailable,
+                on_stage,
+                title_key="stage.cloud_upload",
+            )
+            return [], None, None
+
+        with self._stage("cloud_upload", "stage.cloud_upload", stages, on_stage) as st:
+            outcome = await provider.upload_file(Path(file_info.path), cancel=cancel)
+            uploaded_to = provider.name if outcome.sent else None
+            uploaded_at = outcome.sent_at if outcome.sent else None
+            if outcome.availability is Availability.READY:
+                st.summary = "completed"
+                return outcome.signals, uploaded_to, uploaded_at
+            # The bytes left but no verdict came back (timeout / error): unavailable +
+            # incomplete, yet the upload fact is still recorded honestly (point 8).
+            st.status = StageStatus.FAILED
+            st.availability = outcome.availability
+            st.error = outcome.detail
+            unavailable.append("cloud_upload")
+            return [], uploaded_to, uploaded_at
+
+    def _cloud_skip_info(self, reason: str) -> Signal:
+        """Explain in the 'why' block why a consented upload did not happen (point 11)."""
+        return Signal(
+            source="cloud_upload",
+            kind=SourceKind.CLOUD_SCAN,
+            severity=Severity.INFO,
+            title_key="signal.cloud_upload.skipped",
+            title_en=f"Cloud upload not performed: {reason}",
+        )
 
     async def _gather_or_cancel(self, coros: list[Any], cancel: asyncio.Event) -> list[Any]:
         """Await all coroutines, but abort promptly if cancel fires (<2s, §9.9).

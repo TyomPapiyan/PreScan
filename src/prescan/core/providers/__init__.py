@@ -36,6 +36,7 @@ __all__ = [
     "UrlscanProvider",
     "VirusTotalProvider",
     "build_hash_providers",
+    "build_upload_provider",
     "build_url_providers",
 ]
 
@@ -75,3 +76,10 @@ def build_url_providers(
         UrlhausProvider(abuse_key, limiter, allow_network=allow_network),
         VirusTotalProvider(get_api_key("virustotal"), limiter, allow_network=allow_network),
     ]
+
+
+def build_upload_provider(limiter: RateLimiter, *, allow_network: bool = True) -> Provider:
+    """Return the stage-13 upload provider. VirusTotal only in this version (M8)."""
+    from prescan.core.config import get_api_key
+
+    return VirusTotalProvider(get_api_key("virustotal"), limiter, allow_network=allow_network)

@@ -265,3 +265,9 @@ class ScanReport(BaseModel):
     from_cache: bool = False
     incomplete: bool = False  # at least one source could not run
     unavailable_sources: list[str] = Field(default_factory=list)
+
+    # Stage 13: set the moment the file bytes leave the machine and never cleared, so
+    # the report can never falsely claim the file stayed put (§6.2). Filled straight
+    # from UploadOutcome.sent/sent_at -- the single source of truth. UTC in storage.
+    uploaded_to: str | None = None
+    uploaded_at: datetime | None = None

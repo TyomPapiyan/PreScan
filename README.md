@@ -66,6 +66,10 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 - **Google Safe Browsing** via the **hash-prefix** mechanism — the full URL is never sent.
 - Every source is off until you add its key, and nothing leaves your machine on a scan run
   with `--no-network`.
+- **Reputation only — the file itself never leaves your machine.** A third layer, cloud
+  *scanning* that uploads the file body, is **not implemented in this version**; only the
+  local engines and hash/URL reputation run. The `--allow-upload` flag and the "Never upload
+  files to the cloud" setting are therefore inert placeholders for that future stage.
 
 ### 🔗 Link inspection before download
 - URL normalization, redirect chain, TLS certificate and **RDAP** domain age, plus lexical
@@ -228,8 +232,8 @@ prescan version
 ```
 
 `prescan scan` options: `--json`, `--html <path>`, `--no-network` (local engines only),
-`--allow-upload` (permit cloud upload), `--download` (for a URL, fetch and scan the body),
-`--refresh` (ignore the cache), `--timeout <s>`, `--quiet`.
+`--allow-upload` (accepted but **inert in this version** — see below), `--download` (for a
+URL, fetch and scan the body), `--refresh` (ignore the cache), `--timeout <s>`, `--quiet`.
 
 Exit codes for `prescan scan`: `0` SAFE · `1` SUSPICIOUS · `2` DANGEROUS · `3` UNKNOWN ·
 `4` runtime error.

@@ -78,17 +78,32 @@ _DEFAULT_LIMITS: Final[dict[str, tuple[float, float]]] = {
 
 
 class RateLimiter:
-    """Registry of one token bucket per provider id."""
+    """Registry of one token bucket per provider id.
 
-    def __init__(self, limits: dict[str, tuple[float, float]] | None = None) -> None:
+    ``time_source``/``sleep`` are threaded into every bucket so a test can pace an
+    upload's poll loop deterministically (a fake clock) instead of spending real
+    wall-clock seconds -- the buckets otherwise wait 15 s between VirusTotal calls.
+    """
+
+    def __init__(
+        self,
+        limits: dict[str, tuple[float, float]] | None = None,
+        *,
+        time_source: TimeSource | None = None,
+        sleep: Sleeper | None = None,
+    ) -> None:
         self._limits = limits or _DEFAULT_LIMITS
         self._buckets: dict[str, TokenBucket] = {}
+        self._time_source = time_source
+        self._sleep = sleep
 
     def bucket(self, provider: str) -> TokenBucket:
         """Return (creating on first use) the bucket for a provider."""
         if provider not in self._buckets:
             rate, capacity = self._limits.get(provider, (60.0, 5.0))
-            self._buckets[provider] = TokenBucket(rate, capacity)
+            self._buckets[provider] = TokenBucket(
+                rate, capacity, time_source=self._time_source, sleep=self._sleep
+            )
         return self._buckets[provider]
 
     async def acquire(self, provider: str) -> None:

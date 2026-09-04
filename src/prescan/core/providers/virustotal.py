@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import base64
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import structlog
 
@@ -40,12 +40,19 @@ class VirusTotalProvider(HttpProvider):
             return []
         try:
             stats = response.json()["data"]["attributes"]["last_analysis_stats"]
-            malicious = int(stats.get("malicious", 0))
-            total = sum(int(v) for v in stats.values())
+            return self._file_signals_from_stats(stats)
         except (ValueError, KeyError, TypeError) as exc:
             log.warning("virustotal.parse_failed", error=str(exc))
             return []
 
+    def _file_signals_from_stats(self, stats: dict[str, Any]) -> list[Signal]:
+        """Turn a VirusTotal stats block into scoring signals (§8.2/§8.3).
+
+        The single place file reputation becomes signals -- shared by lookup_hash and
+        (M8) upload_file, so identical stats always yield an identical verdict.
+        """
+        malicious = int(stats.get("malicious", 0))
+        total = sum(int(v) for v in stats.values())
         if malicious >= 4:
             return [self._detection(malicious, total, decisive=True, severity=Severity.CRITICAL)]
         if malicious >= 1:

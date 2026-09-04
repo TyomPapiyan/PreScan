@@ -133,7 +133,13 @@ Item {
                     CheckBox {
                         text: qsTr("Never upload files to the cloud")
                         checked: Bridge.neverUpload
-                        onToggled: Bridge.setNeverUpload(checked)
+                        enabled: false  // stage 13 not implemented: upload cannot happen
+                    }
+                    Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: theme.subtext
+                        text: qsTr("Cloud file upload is not available in this version — files never leave your machine.")
                     }
                     CheckBox {
                         text: qsTr("Send only hashes")

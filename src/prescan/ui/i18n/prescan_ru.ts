@@ -431,57 +431,62 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
         <translation>Никогда не загружать файлы в облако</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="139"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="142"/>
+        <source>Cloud file upload is not available in this version — files never leave your machine.</source>
+        <translation>Загрузка файлов в облако в этой версии недоступна — файлы не покидают вашу машину.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="145"/>
         <source>Send only hashes</source>
         <translation>Отправлять только хеши</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="147"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="153"/>
         <source>When on, links are checked only by Safe Browsing hash prefixes — a green (safe) verdict for a URL is not possible.</source>
         <translation>При включении ссылки проверяются только по хеш-префиксам Safe Browsing — зелёный (безопасный) вердикт по ссылке невозможен.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="150"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="156"/>
         <source>Disable all network activity</source>
         <translation>Отключить всю сетевую активность</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="160"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="166"/>
         <source>Scanning</source>
         <translation>Сканирование</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="165"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="171"/>
         <source>Download size limit (MB):</source>
         <translation>Лимит размера загрузки (МБ):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="170"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="176"/>
         <source>Scan timeout (s):</source>
         <translation>Тайм-аут проверки (с):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="175"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="181"/>
         <source>Archive extraction depth:</source>
         <translation>Глубина распаковки архивов:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="180"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="186"/>
         <source>Cache TTL (days):</source>
         <translation>Срок жизни кэша (дней):</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="191"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="197"/>
         <source>Interface</source>
         <translation>Интерфейс</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="195"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="201"/>
         <source>Theme:</source>
         <translation>Тема:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="203"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="209"/>
         <source>Language:</source>
         <translation>Язык:</translation>
     </message>

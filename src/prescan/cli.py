@@ -62,7 +62,11 @@ def scan(
     html: Annotated[Path | None, typer.Option("--html", help="Write an HTML report.")] = None,
     no_network: Annotated[bool, typer.Option("--no-network", help="Layer 1 only.")] = False,
     allow_upload: Annotated[
-        bool, typer.Option("--allow-upload", help="Permit cloud upload (stage 13).")
+        bool,
+        typer.Option(
+            "--allow-upload",
+            help="Accepted but inert: cloud file upload is not implemented in this version.",
+        ),
     ] = False,
     download: Annotated[
         bool, typer.Option("--download", help="For a URL: fetch and scan the body.")
@@ -72,6 +76,15 @@ def scan(
     quiet: Annotated[bool, typer.Option("--quiet", help="Only the verdict line.")] = False,
 ) -> None:
     """Scan a file or URL and report a verdict. Exit code encodes the verdict."""
+    if allow_upload:
+        # Accepted (so existing scripts don't break) but stage 13 does not exist yet,
+        # so allow_cloud_upload is read by nothing -- say so rather than silently no-op.
+        typer.secho(
+            "--allow-upload has no effect: cloud file upload is not implemented in "
+            "this version; the file does not leave your machine.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
     is_url = target.startswith(("http://", "https://"))
     if is_url:
         request = ScanRequest(

@@ -415,8 +415,21 @@ class Pipeline:
         if any(s.decisive for s in signals_so_far):
             reason = "the file is already flagged dangerous locally"
             return [self._cloud_skip_info(reason)], None, None
-        # "Unknown to the cloud" is read from the reputation result (§6 stage 13): a
-        # VirusTotal signal for this file means the cloud already has it -> no upload.
+        # §6 line 836: upload only if the file is unknown to *this* provider (the one we
+        # would send it to). We can only assert "unknown" if that provider's hash lookup
+        # actually ran: if it failed or was skipped we have NOT established the file is
+        # unknown, so we do NOT upload -- privacy over completeness (point 5).
+        rep_stage = next(
+            (
+                s
+                for s in stages
+                if s.stage_id == provider.name and s.title_key == "stage.reputation"
+            ),
+            None,
+        )
+        if rep_stage is None or rep_stage.status is not StageStatus.DONE:
+            reason = "could not verify whether the cloud already has this file"
+            return [self._cloud_skip_info(reason)], None, None
         if any(s.source == provider.name for s in signals_so_far):
             return [self._cloud_skip_info("the cloud already knows this file")], None, None
 

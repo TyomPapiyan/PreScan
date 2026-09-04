@@ -59,13 +59,23 @@ class _FakeHash:
     stage_id = "reputation"
     requires_key = True
 
-    def __init__(self, signals: list[Signal]) -> None:
+    def __init__(
+        self,
+        signals: list[Signal],
+        *,
+        availability: Availability = Availability.READY,
+        raises: bool = False,
+    ) -> None:
         self._signals = signals
+        self._availability = availability
+        self._raises = raises
 
     async def availability(self) -> tuple[Availability, str]:
-        return Availability.READY, "ready"
+        return self._availability, "ready"
 
     async def lookup_hash(self, sha256: str) -> list[Signal]:
+        if self._raises:
+            raise RuntimeError("reputation lookup failed")
         return list(self._signals)
 
 
@@ -99,6 +109,8 @@ async def _run(
     never_upload: bool,
     allow_upload: bool,
     hash_signals: list[Signal] | None = None,
+    hash_availability: Availability = Availability.READY,
+    hash_raises: bool = False,
     engine_signals: list[Signal] | None = None,
     upload: _FakeUpload | None = None,
 ) -> Any:
@@ -108,10 +120,11 @@ async def _run(
     async def _no_engines(self: Pipeline, *a: object, **k: object) -> tuple[list[Signal], bool]:
         return list(engine_signals or []), False
 
-    monkeypatch.setattr(Pipeline, "_run_engines", _no_engines)
-    monkeypatch.setattr(
-        pipeline_mod, "build_hash_providers", lambda *a, **k: [_FakeHash(hash_signals or [])]
+    hash_provider = _FakeHash(
+        hash_signals or [], availability=hash_availability, raises=hash_raises
     )
+    monkeypatch.setattr(Pipeline, "_run_engines", _no_engines)
+    monkeypatch.setattr(pipeline_mod, "build_hash_providers", lambda *a, **k: [hash_provider])
     monkeypatch.setattr(
         pipeline_mod, "build_upload_provider", lambda *a, **k: upload or _FakeUpload()
     )
@@ -203,7 +216,11 @@ async def test_cloud_already_knows_hash_skips_upload(
         upload=up,
     )
     assert up.upload_calls == 0 and report.incomplete is False
-    assert any(s.source == "cloud_upload" and "already knows" in s.title_en for s in report.signals)
+    skip = next(s for s in report.signals if s.source == "cloud_upload")
+    assert "already knows" in skip.title_en
+    # point 7: the skip INFO carries zero weight and is not decisive -- it never
+    # moves the verdict, it only explains why the upload did not happen.
+    assert skip.severity is Severity.INFO and skip.weight == 0 and skip.decisive is False
 
 
 @pytest.mark.asyncio
@@ -231,6 +248,48 @@ async def test_already_dangerous_locally_skips_upload(
     assert up.upload_calls == 0 and report.incomplete is False
     assert report.verdict is Verdict.DANGEROUS
     assert any(s.source == "cloud_upload" and "dangerous" in s.title_en for s in report.signals)
+
+
+# --- precondition: upload only when reputation established the file is unknown
+# (points 5-6). If the upload provider's reputation stage did not run
+# successfully, we have NOT established that the cloud lacks this file, so we do
+# not send it -- privacy over completeness. An INFO explains it; not incomplete. #
+@pytest.mark.asyncio
+async def test_reputation_error_blocks_upload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    up = _FakeUpload()
+    report = await _run(
+        monkeypatch,
+        tmp_path,
+        never_upload=False,
+        allow_upload=True,
+        hash_raises=True,  # reputation stage fails
+        upload=up,
+    )
+    assert up.upload_calls == 0
+    skip = next(s for s in report.signals if s.source == "cloud_upload")
+    assert "could not verify" in skip.title_en
+    assert skip.severity is Severity.INFO and skip.weight == 0 and skip.decisive is False
+
+
+@pytest.mark.asyncio
+async def test_reputation_skipped_no_key_blocks_upload(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    up = _FakeUpload()
+    report = await _run(
+        monkeypatch,
+        tmp_path,
+        never_upload=False,
+        allow_upload=True,
+        hash_availability=Availability.NO_KEY,  # reputation stage skipped
+        upload=up,
+    )
+    assert up.upload_calls == 0
+    skip = next(s for s in report.signals if s.source == "cloud_upload")
+    assert "could not verify" in skip.title_en
+    assert skip.severity is Severity.INFO and skip.weight == 0 and skip.decisive is False
 
 
 # --- consented but cannot run: unavailable + incomplete (§6.1) ------------- #

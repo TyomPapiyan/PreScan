@@ -22,7 +22,7 @@ from typing import Final
 
 import structlog
 
-from prescan.core.models import Severity, Signal, Verdict
+from prescan.core.models import DOWNLOADED_BODY_SCOPE, Severity, Signal, Verdict
 
 log = structlog.get_logger(__name__)
 
@@ -149,7 +149,14 @@ def score(
     #     malicious == 0). Threat-only feeds (Safe Browsing, URLhaus) never clear, and
     #     ml_ok is inapplicable, so it is not required here.
     if target_noun == "URL":
-        has_authoritative_clean = any(s.data.get("authoritative_clean") is True for s in signals)
+        # A clean hash of the *downloaded body* is authoritative for the file, not for
+        # the link (§8.3, F0 point 9): a URL can serve different content, so it never
+        # clears the link to SAFE. Only a clean answer about the URL itself counts.
+        has_authoritative_clean = any(
+            s.data.get("authoritative_clean") is True
+            and s.data.get("target_scope") != DOWNLOADED_BODY_SCOPE
+            for s in signals
+        )
         cleared = has_authoritative_clean and no_low_or_worse
     else:
         cleared = had_authoritative_source and no_low_or_worse and ml_ok

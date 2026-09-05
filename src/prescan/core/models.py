@@ -9,6 +9,12 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+#: Marks a signal (in ``Signal.data["target_scope"]``) as describing a file downloaded
+#: from a URL, not the URL itself. A clean such signal is authoritative for the *body*
+#: but not for the *link* -- a URL can serve different content -- so URL SAFE-clearance
+#: ignores it, while a malicious such signal still condemns the link in full (§8.3).
+DOWNLOADED_BODY_SCOPE = "downloaded_body"
+
 # --------------------------------------------------------------------------- #
 # Enums
 # --------------------------------------------------------------------------- #

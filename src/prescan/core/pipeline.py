@@ -30,6 +30,7 @@ from prescan.core.errors import EngineSkipped, ScanCancelled
 from prescan.core.hashing import fuzzy_hash, hash_file, imphash
 from prescan.core.identify import identify
 from prescan.core.models import (
+    DOWNLOADED_BODY_SCOPE,
     Availability,
     FileInfo,
     ScanReport,
@@ -68,10 +69,12 @@ OnStage = Callable[[StageResult], None]
 #: Engines whose completion counts as an authoritative clean/dirty verdict (§8.3).
 _AUTHORITATIVE = frozenset({"clamav", "defender"})
 
-#: Marks signals that describe a file downloaded from a URL, not the URL itself.
-#: A clean such signal is authoritative for the *body* but not for the *link* (a URL
-#: can serve different content), so URL SAFE-clearance ignores it (§8.3, F0).
-DOWNLOADED_BODY = "downloaded_body"
+
+def _scope_downloaded_body(signal: Signal) -> Signal:
+    """Tag a signal as describing the URL's downloaded body, not the URL (§8.3)."""
+    return signal.model_copy(
+        update={"data": {**signal.data, "target_scope": DOWNLOADED_BODY_SCOPE}}
+    )
 
 
 def upload_gate_reason(
@@ -763,6 +766,9 @@ class Pipeline:
             verdict_reason_en=reason_en,
             incomplete=bool(unavailable) or cancel.is_set(),
             unavailable_sources=unavailable,
+            # Same shared decision as the file branch: an unknown downloaded body that
+            # is not already condemned could be uploaded for a fresh scan (point 6).
+            upload_could_help=upload_gate_reason(signals, stages, upload_provider_name()) is None,
         )
 
     async def _download_and_scan(
@@ -802,6 +808,18 @@ class Pipeline:
                 file_info, workdir, request, stages, unavailable, on_stage, cancel
             )
             signals += engine_signals
+
+            # Hash reputation for the downloaded body, via the SAME path as a file scan
+            # (F0 point 8): a known-malicious SHA-256 behind a link is a dangerous link.
+            # The signals are scoped as downloaded-body so their *clean* answer cannot
+            # clear the link to SAFE (§8.3 asymmetry, point 9) -- only condemn it. The
+            # returned had_auth is intentionally dropped for the same reason.
+            if request.allow_network and self._config.allow_network and not cancel.is_set():
+                rep_signals, _rep_auth = await self._run_providers(
+                    file_info, request, stages, unavailable, on_stage, cancel
+                )
+                signals += [_scope_downloaded_body(s) for s in rep_signals]
+
             return file_info, signals, had_auth
         finally:
             shutil.rmtree(workdir, ignore_errors=True)

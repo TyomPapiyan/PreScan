@@ -21,6 +21,7 @@ lock closed the file does not leave the machine -- is preserved below.
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,6 +33,18 @@ from prescan.core.config import AppConfig
 from prescan.core.models import ScanReport, ScanRequest, Verdict
 
 _UPLOADED_AT = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def _plain(text: str) -> str:
+    """Drop ANSI colour codes so a rich-rendered flag name reads as one token.
+
+    Rich colourises the help on a colour-capable terminal (as CI is), wrapping each
+    flag as ``-`` ESC ``-allow-upload`` ESC, so the literal ``--allow-upload`` never
+    appears contiguously. Stripping the escapes rejoins the two dashes.
+    """
+    return _ANSI.sub("", text)
 
 
 def _config(*, never_upload: bool) -> AppConfig:
@@ -203,7 +216,7 @@ def test_url_download_notice_names_downloaded_file(
 # --- help text no longer calls the flag inert ----------------------------------- #
 def test_help_does_not_call_flag_inert() -> None:
     result = CliRunner().invoke(cli.app, ["scan", "--help"])
-    text = result.output.lower()
+    text = _plain(result.output).lower()
     assert "inert" not in text
     assert "not implemented" not in text
-    assert "--allow-upload" in result.output
+    assert "--allow-upload" in _plain(result.output)

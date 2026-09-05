@@ -240,6 +240,13 @@ class Bridge(QObject):
         request = self._report.request.model_copy(update={"allow_cloud_upload": True})
         self._start(request)
 
+    @Property(str, constant=True)
+    def appVersion(self) -> str:
+        """The application version (single source of truth: prescan.__version__)."""
+        from prescan import __version__
+
+        return __version__
+
     @Property(str, notify=themeChanged)
     def theme(self) -> str:
         return self._theme

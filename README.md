@@ -66,10 +66,12 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 - **Google Safe Browsing** via the **hash-prefix** mechanism — the full URL is never sent.
 - Every source is off until you add its key, and nothing leaves your machine on a scan run
   with `--no-network`.
-- **Reputation only — the file itself never leaves your machine.** A third layer, cloud
-  *scanning* that uploads the file body, is **not implemented in this version**; only the
-  local engines and hash/URL reputation run. The `--allow-upload` flag and the "Never upload
-  files to the cloud" setting are therefore inert placeholders for that future stage.
+- **Cloud upload is a third layer, off by default and never automatic.** Reputation lookups
+  send only a hash; uploading the file **body** for a fresh cloud scan happens only when you
+  ask for it — the `--allow-upload` flag (or the result-screen button in the GUI) **and** the
+  "Never upload files to the cloud" setting turned off. A submitted file leaves your machine in
+  full, cannot be recalled, and may be shared with the service's community and premium
+  customers. See *[What leaves your machine](#-what-leaves-your-machine)*.
 
 ### 🔗 Link inspection before download
 - URL normalization, redirect chain, TLS certificate and **RDAP** domain age, plus lexical
@@ -232,8 +234,10 @@ prescan version
 ```
 
 `prescan scan` options: `--json`, `--html <path>`, `--no-network` (local engines only),
-`--allow-upload` (accepted but **inert in this version** — see below), `--download` (for a
-URL, fetch and scan the body), `--refresh` (ignore the cache), `--timeout <s>`, `--quiet`.
+`--allow-upload` (consent to upload the file body to the cloud when it is unknown there — see
+*[What leaves your machine](#-what-leaves-your-machine)*; ignored under `--no-network`, and
+refused while the "Never upload files to the cloud" lock is on), `--download` (for a URL, fetch
+and scan the body), `--refresh` (ignore the cache), `--timeout <s>`, `--quiet`.
 
 Exit codes for `prescan scan`: `0` SAFE · `1` SUSPICIOUS · `2` DANGEROUS · `3` UNKNOWN ·
 `4` runtime error.
@@ -259,13 +263,32 @@ docs/                         # screenshots, release notes, release checklist
 tests/                        # unit, engines, providers, integration, ui
 ```
 
-## 🔒 Privacy
+## 🔒 What leaves your machine
 
-- The inspected file is **never executed** — only read and parsed as data.
-- On a `--no-network` run nothing leaves your machine. Otherwise only what a source needs is
-  sent, and the Privacy section of Settings shows which URL sources receive the full URL
-  versus a hash prefix (Safe Browsing).
-- API keys live in the OS keyring; `structlog` is configured to redact key values from logs.
+The inspected file is **never executed** — only read and parsed as data. On a `--no-network`
+run nothing leaves your machine at all. Otherwise, exactly this and no more:
+
+| Action | What is sent outward |
+|---|---|
+| **Scanning a file** | Only its **SHA-256** (to the reputation sources you have keyed). The file body stays local. |
+| **Scanning a link** | The **URL** (to the URL-reputation sources; Safe Browsing gets only a hash prefix). With `--download`, the response body is fetched and its **SHA-256** is also sent — the downloaded file's body stays local. |
+| **Cloud upload** | The **whole file body**, and only then. It happens solely on explicit consent (`--allow-upload` or the result-screen button) with the "Never upload files to the cloud" lock turned off. |
+
+A file you upload **leaves your machine in full and cannot be recalled.** Per VirusTotal's own
+terms, submitted files **may be shared with premium VirusTotal customers**, and the resulting
+scan reports are **published to the public VirusTotal community**. This is not softened
+anywhere in the app.
+
+API keys live in the OS keyring — never in the repo, config, logs or reports; `structlog` is
+configured to redact key values from logs.
+
+### VirusTotal free key: quota you should know about
+
+The **public** VirusTotal API key is **free for non-commercial use only** and is rate-limited to
+**4 requests per minute** and **500 requests per day**. Be aware of the arithmetic before you
+lean on it: a single **cloud upload** spends, out of that daily 500, one request for the hash
+reputation, one to submit the file, and **up to a dozen** more polling for the analysis result —
+so a handful of uploads can consume a large slice of the day's quota.
 
 ## 🧑‍💻 Development
 

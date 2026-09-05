@@ -507,10 +507,6 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
         <translation>Когда включено, файлы никогда не загружаются. Снимите, чтобы на экране результата появлялось предложение загрузки для каждой проверки; каждая загрузка всё равно требует отдельного подтверждения.</translation>
     </message>
     <message>
-        <source>Cloud file upload is not available in this version — files never leave your machine.</source>
-        <translation type="vanished">Загрузка файлов в облако в этой версии недоступна — файлы не покидают вашу машину.</translation>
-    </message>
-    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="145"/>
         <source>Send only hashes</source>
         <translation>Отправлять только хеши</translation>

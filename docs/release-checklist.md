@@ -24,7 +24,13 @@ Create `docs/release-notes/vX.Y.Z.md`. The publish job passes it verbatim to
 parts: one-line description, the §11.4 "not an antivirus" disclaimer, supported
 platforms, per-OS install (including the AppImage GL/GLib dependency note), the
 separate `prescan update-model` step, optional ClamAV, the non-commercial API-key
-caveat, MIT + bundled `licenses/`, and the `SHA256SUMS` verification line.
+caveat, MIT + bundled `licenses/`, and the `SHA256SUMS` verification line. Also call
+out **any behaviour change since the previous version** (e.g. a scoring/denominator
+change that shifts verdicts) so users are not surprised.
+
+`tests/unit/test_version.py` asserts that `docs/release-notes/v${__version__}.md`
+exists — so a forgotten or misnamed notes file fails the local gate, not only the
+tag build's version guard. Bump the version (step 1) and add this file together.
 
 Commit steps 1 and 2 to `main` and push.
 

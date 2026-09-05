@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import PreScan
 
 Item {
     property var theme
@@ -9,7 +10,7 @@ Item {
         anchors.margins: 24
         spacing: 12
         Label { text: qsTr("About PreScan"); color: theme.text; font.pixelSize: 22; font.bold: true }
-        Label { text: "PreScan 0.0.0"; color: theme.text }
+        Label { text: "PreScan " + Bridge.appVersion; color: theme.text }
         Label {
             Layout.maximumWidth: 620
             wrapMode: Text.WordWrap

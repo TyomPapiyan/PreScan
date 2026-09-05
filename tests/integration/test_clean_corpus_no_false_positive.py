@@ -80,13 +80,23 @@ def _collect(
     return out
 
 
-_CORPUS = {
+# Types with NO intentional content heuristic: a clean file here must never be flagged
+# at all. This is exactly where the ML noise showed up (clean PNG/JPEG/GZIP/text at
+# 0.6-0.99 -> SUSPICIOUS), so a false positive on any of these is the regression we guard.
+_PLAIN_CORPUS = {
     "executable (PE/ELF)": _matches_executable,
     "text": _suffix_match({".txt", ".md", ".conf", ".cfg", ".ini"}),
     "json": _suffix_match({".json"}),
     "PNG": _suffix_match({".png"}),
     "JPEG": _suffix_match({".jpg", ".jpeg"}),
     "archive": _suffix_match({".zip", ".whl", ".jar", ".gz", ".xz"}),
+}
+
+# Documents carry deliberate §8.2 content heuristics: a PDF that declares /OpenAction or
+# /JavaScript is SUSPICIOUS *by design*, independent of ML. So a clean document may
+# legitimately be SUSPICIOUS (that is a separate, spec-defined behaviour, not the ML noise
+# this stage fixes) -- but it must still never be DANGEROUS and never carry an ML score.
+_DOCUMENT_CORPUS = {
     "PDF": _suffix_match({".pdf"}),
 }
 
@@ -98,6 +108,11 @@ async def _scan(config: AppConfig, path: Path) -> ScanReport:
     return await Pipeline(config).run(request)
 
 
+def _no_ml_probability(report: ScanReport) -> bool:
+    """True if the report carries no ML probability signal (stage removed by type)."""
+    return not any(s.source == "ml" and "probability" in s.data for s in report.signals)
+
+
 @pytest.mark.asyncio
 async def test_clean_system_files_are_never_flagged() -> None:
     config = AppConfig.load()
@@ -107,7 +122,7 @@ async def test_clean_system_files_are_never_flagged() -> None:
     flagged: list[str] = []
     scanned = 0
 
-    for label, match in _CORPUS.items():
+    for label, match in _PLAIN_CORPUS.items():
         files = _collect(match, limit=2)
         covered[label] = len(files)
         is_executable = label.startswith("executable")
@@ -118,20 +133,38 @@ async def test_clean_system_files_are_never_flagged() -> None:
             except Exception as exc:  # noqa: BLE001 - a crash on a clean file is a failure
                 flagged.append(f"{label}: {path} -> raised {exc!r}")
                 continue
+            # No content heuristic applies here, so a clean file must be neither.
             if report.verdict in (Verdict.SUSPICIOUS, Verdict.DANGEROUS):
                 flagged.append(f"{label}: {path} -> {report.verdict.value}")
-            # Point 19: a non-executable must carry no ML probability at all (the stage is
-            # skipped by type). With a model installed (CI) this proves the number never
-            # reaches the report; without one the ml stage is simply NO_MODEL.
-            if not is_executable:
-                ml = [s for s in report.signals if s.source == "ml" and "probability" in s.data]
-                assert not ml, f"{label}: {path} carried an ML probability: {ml}"
+            # Point 19: a non-executable must carry no ML probability at all (stage removed
+            # by type). With a model installed (CI) this proves the number never reaches the
+            # report; without one the ml stage is simply NO_MODEL.
+            if not is_executable and not _no_ml_probability(report):
+                flagged.append(f"{label}: {path} carried an ML probability")
+
+    # Documents: a clean one may be SUSPICIOUS by a deliberate §8.2 content heuristic
+    # (e.g. a PDF /OpenAction), which is not the ML noise this stage fixes. It must still
+    # never be DANGEROUS and never carry an ML score.
+    for label, match in _DOCUMENT_CORPUS.items():
+        files = _collect(match, limit=2)
+        covered[label] = len(files)
+        for path in files:
+            scanned += 1
+            try:
+                report = await _scan(config, path)
+            except Exception as exc:  # noqa: BLE001 - a crash on a clean file is a failure
+                flagged.append(f"{label}: {path} -> raised {exc!r}")
+                continue
+            if report.verdict is Verdict.DANGEROUS:
+                flagged.append(f"{label}: {path} -> dangerous")
+            if not _no_ml_probability(report):
+                flagged.append(f"{label}: {path} carried an ML probability")
 
     print(f"clean-corpus coverage (found per type): {covered}")
     # Not vacuous: at least executables plus one data type must have been available.
     assert scanned >= 3, f"too few clean files found to be meaningful: {covered}"
     assert covered["executable (PE/ELF)"] > 0, "no executable sample found to scan"
-    assert any(covered[t] > 0 for t in ("text", "json", "PNG", "JPEG", "archive", "PDF")), (
+    assert any(covered[t] > 0 for t in ("text", "json", "PNG", "JPEG", "archive")), (
         "no non-executable data file found to scan -- the ML-false-positive case is untested"
     )
     assert not flagged, "clean files were flagged:\n" + "\n".join(flagged)

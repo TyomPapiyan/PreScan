@@ -41,6 +41,17 @@ _VERDICT_COLOR = {
 FULL_URL_SOURCES = ("VirusTotal (URL lookup)", "urlscan.io", "URLhaus")
 
 
+def _human_size(size: int) -> str:
+    """Human byte size plus the exact count, e.g. '1.2 MB (1234567 bytes)'."""
+    value = float(size)
+    for unit in ("bytes", "KB", "MB", "GB", "TB"):
+        if value < 1024 or unit == "TB":
+            head = f"{int(size)} bytes" if unit == "bytes" else f"{value:.1f} {unit}"
+            return head if unit == "bytes" else f"{head} ({size} bytes)"
+        value /= 1024
+    return f"{size} bytes"  # pragma: no cover - unreachable, TB branch returns first
+
+
 class Bridge(QObject):
     """The single QML-facing object wiring buttons to the engine."""
 
@@ -142,6 +153,76 @@ class Bridge(QObject):
     @Property(bool, notify=resultChanged)
     def incomplete(self) -> bool:
         return self._incomplete
+
+    # ---- stage 13: cloud upload offer (asked AFTER the scan, §6.2) ----- #
+    # Consent is a deliberate action on the result screen, never a pre-scan prompt:
+    # whether an upload could help is only known once the scan has run, and asking up
+    # front trains people to click "yes" blindly. The offer appears only when it could
+    # add something -- the verdict is not DANGEROUS and the file is unknown to the
+    # cloud provider -- and only for a direct file scan (the path core supports).
+    def _can_offer_upload(self, report: ScanReport | None) -> bool:
+        from prescan.core.providers import upload_provider_name
+
+        if report is None or report.file is None:
+            return False
+        if report.request.target_kind is not TargetKind.FILE:
+            return False
+        if not self._config.allow_network:  # nothing can be uploaded with the net off
+            return False
+        if report.verdict is Verdict.DANGEROUS:  # already decided; no point uploading
+            return False
+        if report.uploaded_to is not None:  # already uploaded in this session
+            return False
+        # "Known to the cloud" = the upload provider's hash reputation already
+        # identified the file; then a fresh upload adds nothing (mirrors the gate).
+        return not any(s.source == upload_provider_name() for s in report.signals)
+
+    @Property(bool, notify=resultChanged)
+    def canOfferUpload(self) -> bool:
+        return self._can_offer_upload(self._report)
+
+    @Property(bool, notify=settingsChanged)
+    def uploadLocked(self) -> bool:
+        """The persistent master switch (§10.5). When on, the offer is shown disabled."""
+        return self._config.never_upload_files
+
+    @Property(str, constant=True)
+    def uploadService(self) -> str:
+        """Recipient service name, taken from the builder -- never hardcoded here."""
+        from prescan.core.providers import upload_provider_name
+
+        return upload_provider_name()
+
+    @Property(str, notify=resultChanged)
+    def uploadFileName(self) -> str:
+        return self._report.file.name if self._report and self._report.file else ""
+
+    @Property(str, notify=resultChanged)
+    def uploadFileSize(self) -> str:
+        if self._report is None or self._report.file is None:
+            return ""
+        return _human_size(self._report.file.size)
+
+    @Property(str, notify=resultChanged)
+    def uploadFileSha256(self) -> str:
+        return self._report.file.sha256 if self._report and self._report.file else ""
+
+    @Slot()
+    def uploadCurrentToCloud(self) -> None:
+        """Re-run the whole scan with consent for this run (§6.2, points 8-10).
+
+        The entire scan is repeated with the flag set rather than bolting one stage
+        onto a finished report: the local engines re-run in seconds and there is no
+        partial state and no second report-assembly path. Core stays Qt-free -- the UI
+        only starts a second scan with allow_cloud_upload=True; no callback runs the
+        other way during a scan.
+        """
+        if self._report is None or not self._can_offer_upload(self._report):
+            return
+        if self._config.never_upload_files:  # lock closed: never upload (button is disabled)
+            return
+        request = self._report.request.model_copy(update={"allow_cloud_upload": True})
+        self._start(request)
 
     @Property(str, notify=themeChanged)
     def theme(self) -> str:

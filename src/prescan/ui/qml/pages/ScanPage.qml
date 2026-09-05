@@ -183,12 +183,105 @@ Item {
             model: Bridge.signalsModel
             delegate: SignalCard { theme: root.theme }
         }
+        // Stage 13: the cloud-upload offer. Shown only when it could add something
+        // (verdict not dangerous, file unknown to the cloud); kept visible but
+        // disabled when the master lock is on, so the third layer is never hidden.
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: Bridge.canOfferUpload
+            spacing: 4
+            Button {
+                objectName: "cloudUploadButton"
+                text: qsTr("Send file to the cloud for scanning")
+                enabled: !Bridge.uploadLocked
+                onClicked: cloudUploadDialog.open()
+            }
+            Label {
+                visible: Bridge.uploadLocked
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                color: theme.subtext
+                text: qsTr("Turn off “Never upload files to the cloud” in Settings to enable this.")
+            }
+        }
         RowLayout {
             Layout.fillWidth: true
             Button { text: qsTr("Save report…"); onClicked: saveDialog.open() }
             Button { text: qsTr("Quarantine"); onClicked: Bridge.quarantineCurrent() }
             Item { Layout.fillWidth: true }
             Button { text: qsTr("New scan"); highlighted: true; onClicked: root.phase = "input" }
+        }
+
+        // §10.5 consent modal. Cancel is the focused, default action so a stray key
+        // never uploads; Esc cancels; there are no pre-ticked toggles. It shows
+        // exactly what will leave the machine and does not soften the disclosure.
+        Dialog {
+            id: cloudUploadDialog
+            objectName: "cloudUploadDialog"
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 48, 560)
+            modal: true
+            closePolicy: Popup.CloseOnEscape
+            title: qsTr("Send this file to the cloud?")
+            onAccepted: Bridge.uploadCurrentToCloud()
+            footer: DialogButtonBox {
+                Button {
+                    text: qsTr("Send file to the cloud")
+                    DialogButtonBox.buttonRole: DialogButtonBox.AcceptRole
+                }
+                Button {
+                    objectName: "cloudCancelButton"
+                    text: qsTr("Cancel")
+                    focus: true  // the default, focused action: Enter/Esc both cancel
+                    DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+                }
+            }
+            ColumnLayout {
+                width: parent.width
+                spacing: 8
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.text
+                    text: qsTr("These exact details will be sent to %1:").arg(Bridge.uploadService)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.text
+                    text: qsTr("File: %1").arg(Bridge.uploadFileName)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.text
+                    text: qsTr("Size: %1").arg(Bridge.uploadFileSize)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WrapAnywhere
+                    color: theme.subtext
+                    text: qsTr("SHA-256: %1").arg(Bridge.uploadFileSha256)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.dangerous
+                    text: qsTr("The file will leave your machine in full. Once it is sent, it cannot be recalled.")
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.dangerous
+                    text: qsTr("Files you submit may be shared with premium %1 customers, and the scan report is shared with the public %1 community.").arg(Bridge.uploadService)
+                }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.subtext
+                    text: qsTr("If you cancel after sending starts, PreScan stops waiting for the result, but the file has already left your machine.")
+                }
+            }
         }
         FileDialog {
             id: saveDialog

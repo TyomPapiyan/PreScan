@@ -31,6 +31,9 @@ from typer.testing import CliRunner
 from prescan import cli
 from prescan.core.config import AppConfig
 from prescan.core.models import ScanReport, ScanRequest, Verdict
+from prescan.core.providers import upload_provider_name
+
+_SERVICE = upload_provider_name()  # never hardcode the provider name in a test either
 
 _UPLOADED_AT = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
 
@@ -143,18 +146,19 @@ def test_no_network_beats_allow_upload(tmp_path: Path, monkeypatch: pytest.Monke
 def test_consent_upload_happened_reports_fact(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    seen = _install(
-        monkeypatch, never_upload=False, uploaded_to="virustotal", uploaded_at=_UPLOADED_AT
-    )
+    seen = _install(monkeypatch, never_upload=False, uploaded_to=_SERVICE, uploaded_at=_UPLOADED_AT)
     result = CliRunner().invoke(cli.app, ["scan", str(_sample(tmp_path)), "--allow-upload"])
 
     assert seen[0].allow_cloud_upload is True
     err = result.stderr
-    # Before line: permission + service, announced ahead of the scan.
-    assert "authorized" in err.lower() and "VirusTotal" in err
+    # Before line: permission + service, the service named from the builder.
+    assert "authorized" in err.lower() and _SERVICE in err
     # After line: the fact, taken straight from the report fields.
-    assert "uploaded to virustotal" in err.lower()
-    assert _UPLOADED_AT.isoformat() in err
+    assert f"uploaded to {_SERVICE}" in err.lower()
+    # The instant is shown in the machine's local zone with an explicit offset. Both
+    # sides convert, so this holds in any timezone (incl. a UTC CI runner); a raw-UTC
+    # "not in" check would be false-green wherever local == UTC, so it is avoided.
+    assert _UPLOADED_AT.astimezone().isoformat(timespec="seconds") in err
 
 
 # --- consent but the gate blocked the upload: second line says "not sent" -------- #
@@ -172,31 +176,31 @@ def test_consent_but_not_sent_reports_fact(tmp_path: Path, monkeypatch: pytest.M
 def test_quiet_does_not_silence_upload_lines(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _install(monkeypatch, never_upload=False, uploaded_to="virustotal", uploaded_at=_UPLOADED_AT)
+    _install(monkeypatch, never_upload=False, uploaded_to=_SERVICE, uploaded_at=_UPLOADED_AT)
     result = CliRunner().invoke(
         cli.app, ["scan", str(_sample(tmp_path)), "--allow-upload", "--quiet"]
     )
 
     err = result.stderr
     assert "authorized" in err.lower()
-    assert "uploaded to virustotal" in err.lower()
+    assert f"uploaded to {_SERVICE}" in err.lower()
 
 
 # --- --json: stdout is pure JSON with the fields; notices stay on stderr --------- #
 def test_json_stdout_is_pure_json_notices_on_stderr(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _install(monkeypatch, never_upload=False, uploaded_to="virustotal", uploaded_at=_UPLOADED_AT)
+    _install(monkeypatch, never_upload=False, uploaded_to=_SERVICE, uploaded_at=_UPLOADED_AT)
     result = CliRunner().invoke(
         cli.app, ["scan", str(_sample(tmp_path)), "--allow-upload", "--json"]
     )
 
     parsed = json.loads(result.stdout)  # stdout parses whole as JSON
-    assert parsed["uploaded_to"] == "virustotal"
+    assert parsed["uploaded_to"] == _SERVICE
     assert parsed["uploaded_at"] is not None
     # The two notices are present, but only on stderr -- never mixed into stdout.
     assert "authorized" in result.stderr.lower()
-    assert "uploaded to virustotal" in result.stderr.lower()
+    assert f"uploaded to {_SERVICE}" in result.stderr.lower()
     assert "authorized" not in result.stdout.lower()
 
 
@@ -204,7 +208,7 @@ def test_json_stdout_is_pure_json_notices_on_stderr(
 def test_url_download_notice_names_downloaded_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _install(monkeypatch, never_upload=False, uploaded_to="virustotal", uploaded_at=_UPLOADED_AT)
+    _install(monkeypatch, never_upload=False, uploaded_to=_SERVICE, uploaded_at=_UPLOADED_AT)
     url = "https://example.com/payload.bin"
     result = CliRunner().invoke(cli.app, ["scan", url, "--download", "--allow-upload"])
 

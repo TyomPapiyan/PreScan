@@ -9,6 +9,7 @@ TTY, or machine JSON with ``--json``.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -66,10 +67,11 @@ def scan(
         typer.Option(
             "--allow-upload",
             help=(
-                "Consent to upload this file to the cloud (VirusTotal) for a fresh "
-                "scan when it is unknown there. Off by default; the file leaves your "
-                "machine only with this flag. Also requires turning off 'Never upload "
-                "files to the cloud' in Settings. Ignored under --no-network."
+                "Consent to upload this file to the cloud service configured for "
+                "uploads (currently VirusTotal) for a fresh scan when it is unknown "
+                "there. Off by default; the file leaves your machine only with this "
+                "flag. Also requires turning off 'Never upload files to the cloud' in "
+                "Settings. Ignored under --no-network."
             ),
         ),
     ] = False,
@@ -136,11 +138,15 @@ def scan(
         )
 
     # Announce the permission and the service BEFORE the scan, so both are visible
-    # even before any bytes move. Never silenced by --quiet -- an upload is exactly
-    # the kind of thing the user must always see.
+    # even before any bytes move. The service name comes from the same builder that
+    # picks the upload provider (never hardcoded here). Never silenced by --quiet --
+    # an upload is exactly the kind of thing the user must always see.
     if upload_consent:
+        from prescan.core.providers import upload_provider_name
+
+        service = upload_provider_name()
         typer.secho(
-            f"Cloud upload authorized: if the {upload_noun} is unknown to VirusTotal, "
+            f"Cloud upload authorized: if the {upload_noun} is unknown to {service}, "
             f"its bytes will be sent there for a fresh scan.",
             fg=typer.colors.YELLOW,
             err=True,
@@ -169,7 +175,7 @@ def scan(
     # by --quiet: the user always learns whether the file left the machine.
     if upload_consent:
         if report.uploaded_to is not None:
-            when = report.uploaded_at.isoformat() if report.uploaded_at else "an unknown time"
+            when = _local_time(report.uploaded_at) if report.uploaded_at else "an unknown time"
             typer.secho(
                 f"The {upload_noun} was uploaded to {report.uploaded_to} at {when}.",
                 fg=typer.colors.YELLOW,
@@ -335,6 +341,15 @@ def history(
     for entry in rows:
         stamp = entry.created_at.strftime("%Y-%m-%d %H:%M")
         typer.echo(f"{stamp}  {entry.verdict:<10}  {entry.target}")
+
+
+def _local_time(dt: datetime) -> str:
+    """Render a stored-UTC instant in the machine's local zone with an explicit offset.
+
+    Times are stored in UTC but shown local, with the offset spelled out, so no one
+    mistakes a UTC clock for their own wall time (the report and the UI follow suit).
+    """
+    return dt.astimezone().isoformat(timespec="seconds")
 
 
 def _print_human(report: ScanReport, *, quiet: bool) -> None:

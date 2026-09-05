@@ -38,6 +38,7 @@ __all__ = [
     "build_hash_providers",
     "build_upload_provider",
     "build_url_providers",
+    "upload_provider_name",
 ]
 
 
@@ -78,8 +79,27 @@ def build_url_providers(
     ]
 
 
+def _upload_provider_cls() -> type[VirusTotalProvider]:
+    """The single choice of stage-13 upload provider (§6.2). VirusTotal for M8.
+
+    Both ``build_upload_provider`` and ``upload_provider_name`` read the provider
+    identity from here, so no caller ever hardcodes a provider name of its own.
+    """
+    return VirusTotalProvider
+
+
 def build_upload_provider(limiter: RateLimiter, *, allow_network: bool = True) -> Provider:
     """Return the stage-13 upload provider. VirusTotal only in this version (M8)."""
     from prescan.core.config import get_api_key
 
-    return VirusTotalProvider(get_api_key("virustotal"), limiter, allow_network=allow_network)
+    cls = _upload_provider_cls()
+    return cls(get_api_key(cls.name), limiter, allow_network=allow_network)
+
+
+def upload_provider_name() -> str:
+    """Id of the configured stage-13 upload provider, from the same source as the builder.
+
+    Reads only the class attribute -- no keyring, no network -- so it is safe to call
+    just to name the service in a notification or a consent dialog (§10.5).
+    """
+    return _upload_provider_cls().name

@@ -30,6 +30,7 @@ from prescan.core.providers import upload_provider_name
 
 _QML = Path(__file__).resolve().parents[2] / "src" / "prescan" / "ui" / "qml" / "pages"
 _SERVICE = upload_provider_name()
+_UPLOADED_AT = datetime(2026, 9, 6, 9, 0, tzinfo=UTC)
 
 
 # --------------------------------------------------------------------------- #
@@ -258,6 +259,71 @@ def test_upload_slot_reruns_with_consent(gui: Any, tmp_path: Path, monkeypatch: 
         assert started[0].target_kind is TargetKind.FILE
     finally:
         bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE, uploaded_to=_SERVICE))
+
+
+# --------------------------------------------------------------------------- #
+# Cache trap (point 15/25) + from-cache visibility (point 14) + report (16/21)
+# --------------------------------------------------------------------------- #
+def test_cached_uploaded_report_does_not_reoffer(gui: Any, tmp_path: Path) -> None:
+    """Point 25: a cached result that already recorded an upload never re-offers one."""
+    bridge = gui.bridge
+    try:
+        report = _file_report(tmp_path, verdict=Verdict.SAFE, uploaded_to=_SERVICE)
+        report = report.model_copy(update={"from_cache": True})
+        bridge._apply_report(report)
+        assert bridge.fromCache is True  # point 14: cache origin is visible
+        assert bridge.uploadedTo == _SERVICE  # the past upload is shown
+        assert bridge.canOfferUpload is False  # ...but it is not offered again
+    finally:
+        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE))
+
+
+def test_result_screen_wires_cache_and_upload_notices() -> None:
+    """Point 14: the result screen shows the cache origin and the past-upload line."""
+    text = (_QML / "ScanPage.qml").read_text(encoding="utf-8")
+    assert "Bridge.fromCache" in text
+    assert "Bridge.uploadedTo" in text
+    assert "Bridge.uploadedAtLocal" in text  # the past event carries its own time
+
+
+def test_pdf_report_carries_upload_line_and_leaks_no_secret(
+    gui: Any, tmp_path: Path, monkeypatch: Any
+) -> None:
+    """Points 16/21: the PDF is rendered from HTML carrying the upload line; no secret leaks.
+
+    Qt glyph-encodes text in the PDF, so a positive substring on the binary is not
+    reliable -- presence is asserted on the exact HTML fed to the renderer. Absence, on
+    the other hand, is meaningful on the raw bytes (a plaintext secret would show), so a
+    representative key/URL are asserted absent from the actual PDF.
+    """
+    import prescan.ui.pdf_export as pdf_mod
+
+    bridge = gui.bridge
+    captured: dict[str, str] = {}
+    original = pdf_mod.html_to_pdf
+
+    def spy(html: str, dest: Path) -> None:
+        captured["html"] = html
+        original(html, dest)
+
+    monkeypatch.setattr(pdf_mod, "html_to_pdf", spy)
+    try:
+        report = _file_report(tmp_path, verdict=Verdict.SAFE, uploaded_to=_SERVICE)
+        report = report.model_copy(update={"uploaded_at": _UPLOADED_AT})
+        bridge._apply_report(report)
+        out = tmp_path / "report.pdf"
+        assert bridge.saveReport(str(out)) is True
+
+        # Presence: the upload line (with the local timestamp) is in the PDF's HTML source.
+        html = captured["html"].lower()
+        assert "was uploaded to" in html and "cannot be recalled" in html
+        # Absence: a representative key and one-time URL never appear in the PDF bytes.
+        raw = out.read_bytes()
+        assert raw.startswith(b"%PDF-")
+        assert b"vt_secret_key_DEADBEEF" not in raw
+        assert b"_ah/upload/ONE_TIME_SECRET" not in raw
+    finally:
+        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE))
 
 
 # --------------------------------------------------------------------------- #

@@ -7,12 +7,24 @@ values (filenames, signal details, URLs) cannot inject markup (§9.6).
 
 from __future__ import annotations
 
+from datetime import datetime
 from functools import lru_cache
 from importlib import resources
 
 from jinja2 import Environment, select_autoescape
 
 from prescan.core.models import ScanReport, Severity, Verdict
+
+
+def format_local_time(dt: datetime) -> str:
+    """Render a stored-UTC instant in the machine's local zone with an explicit offset.
+
+    One rule across the whole project (§6.2): times are stored in UTC and shown local
+    with the offset spelled out, so a UTC clock is never mistaken for local wall time.
+    The CLI, the HTML/PDF report, and the UI all format through here.
+    """
+    return dt.astimezone().isoformat(timespec="seconds")
+
 
 _SEVERITY_ORDER = {
     Severity.CRITICAL: 4,
@@ -50,6 +62,14 @@ def to_html(report: ScanReport, *, lang: str = "en") -> str:
     signals = sorted(report.signals, key=lambda s: _SEVERITY_ORDER[s.severity], reverse=True)
     gauge = "—" if report.verdict is Verdict.UNKNOWN else f"{report.risk_score}/100"
     target_name = report.file.name if report.file else (report.url.original if report.url else "")
+    # Local time with an explicit offset for the upload line; the report is cached for
+    # days, so this is a past event with its own timestamp, never "happening now".
+    uploaded_at_local = format_local_time(report.uploaded_at) if report.uploaded_at else ""
     return template.render(
-        report=report, signals=signals, gauge=gauge, lang=lang, target_name=target_name
+        report=report,
+        signals=signals,
+        gauge=gauge,
+        lang=lang,
+        target_name=target_name,
+        uploaded_at_local=uploaded_at_local,
     )

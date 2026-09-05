@@ -32,103 +32,103 @@
 <context>
     <name>Bridge</name>
     <message>
-        <location filename="../bridge.py" line="319"/>
+        <location filename="../bridge.py" line="341"/>
         <source>ML model: %1% likely malicious</source>
         <extracomment>URL-scan sources that receive the FULL URL, vs Safe Browsing (hash-prefix).</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="320"/>
+        <location filename="../bridge.py" line="342"/>
         <source>ML model could not score the file</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="346"/>
+        <location filename="../bridge.py" line="368"/>
         <source>Downloading the ML model…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="350"/>
+        <location filename="../bridge.py" line="372"/>
         <source>Model download failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="352"/>
+        <location filename="../bridge.py" line="374"/>
         <source>ML model installed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="363"/>
+        <location filename="../bridge.py" line="385"/>
         <source>Updating ClamAV databases…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="367"/>
+        <location filename="../bridge.py" line="389"/>
         <source>ClamAV update failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="380"/>
+        <location filename="../bridge.py" line="402"/>
         <source>Downloading YARA rules…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="384"/>
+        <location filename="../bridge.py" line="406"/>
         <source>Rule update failed: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="386"/>
+        <location filename="../bridge.py" line="408"/>
         <source>Installed %1 YARA rule file(s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="691"/>
+        <location filename="../bridge.py" line="713"/>
         <source>Ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="692"/>
+        <location filename="../bridge.py" line="714"/>
         <source>Add an API key in Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="693"/>
+        <location filename="../bridge.py" line="715"/>
         <source>Rules not downloaded — update rules</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="694"/>
+        <location filename="../bridge.py" line="716"/>
         <source>ML model not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="695"/>
+        <location filename="../bridge.py" line="717"/>
         <source>Not installed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="696"/>
+        <location filename="../bridge.py" line="718"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="697"/>
+        <location filename="../bridge.py" line="719"/>
         <source>Source temporarily unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="698"/>
+        <location filename="../bridge.py" line="720"/>
         <source>Not available on this OS</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="699"/>
+        <location filename="../bridge.py" line="721"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="700"/>
+        <location filename="../bridge.py" line="722"/>
         <source>File too large for this engine</source>
         <translation type="unfinished"></translation>
     </message>
@@ -310,7 +310,7 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
     </message>
     <message>
         <location filename="../qml/pages/ScanPage.qml" line="152"/>
-        <location filename="../qml/pages/ScanPage.qml" line="234"/>
+        <location filename="../qml/pages/ScanPage.qml" line="251"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
@@ -320,92 +320,102 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="180"/>
+        <location filename="../qml/pages/ScanPage.qml" line="182"/>
+        <source>Loaded from cache — this is a stored result, not a scan running now.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="191"/>
+        <source>This file was uploaded to %1 at %2. It left this computer and cannot be recalled.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="197"/>
         <source>WHY THIS VERDICT</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="195"/>
+        <location filename="../qml/pages/ScanPage.qml" line="212"/>
         <source>Send file to the cloud for scanning</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="204"/>
+        <location filename="../qml/pages/ScanPage.qml" line="221"/>
         <source>Turn off “Never upload files to the cloud” in Settings to enable this.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="209"/>
+        <location filename="../qml/pages/ScanPage.qml" line="226"/>
         <source>Save report…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="210"/>
+        <location filename="../qml/pages/ScanPage.qml" line="227"/>
         <source>Quarantine</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="212"/>
+        <location filename="../qml/pages/ScanPage.qml" line="229"/>
         <source>New scan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="225"/>
+        <location filename="../qml/pages/ScanPage.qml" line="242"/>
         <source>Send this file to the cloud?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="229"/>
+        <location filename="../qml/pages/ScanPage.qml" line="246"/>
         <source>Send file to the cloud</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="247"/>
+        <location filename="../qml/pages/ScanPage.qml" line="264"/>
         <source>This is about the file downloaded from the link, not the address itself. Consenting to scan the link does not cover uploading its contents.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="253"/>
+        <location filename="../qml/pages/ScanPage.qml" line="270"/>
         <source>These exact details will be sent to %1:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="259"/>
+        <location filename="../qml/pages/ScanPage.qml" line="276"/>
         <source>File: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="265"/>
+        <location filename="../qml/pages/ScanPage.qml" line="282"/>
         <source>Size: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="271"/>
+        <location filename="../qml/pages/ScanPage.qml" line="288"/>
         <source>SHA-256: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="277"/>
+        <location filename="../qml/pages/ScanPage.qml" line="294"/>
         <source>The file will leave your machine in full. Once it is sent, it cannot be recalled.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="283"/>
+        <location filename="../qml/pages/ScanPage.qml" line="300"/>
         <source>Files you submit may be shared with premium %1 customers, and the scan report is shared with the public %1 community.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="289"/>
+        <location filename="../qml/pages/ScanPage.qml" line="306"/>
         <source>If you cancel after sending starts, PreScan stops waiting for the result, but the file has already left your machine.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="297"/>
+        <location filename="../qml/pages/ScanPage.qml" line="314"/>
         <source>HTML report (*.html)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="297"/>
+        <location filename="../qml/pages/ScanPage.qml" line="314"/>
         <source>PDF report (*.pdf)</source>
         <translation type="unfinished"></translation>
     </message>

@@ -154,6 +154,28 @@ class Bridge(QObject):
     def incomplete(self) -> bool:
         return self._incomplete
 
+    @Property(bool, notify=resultChanged)
+    def fromCache(self) -> bool:
+        """True when this result was served from the cache, not scanned just now.
+
+        Shown next to the result so a cached upload line (a past event) is never read as
+        an upload happening right now (§6.2, the cache trap)."""
+        return self._report is not None and self._report.from_cache
+
+    @Property(str, notify=resultChanged)
+    def uploadedTo(self) -> str:
+        """Service the file was uploaded to, or '' -- a recorded fact, past tense."""
+        return self._report.uploaded_to if self._report and self._report.uploaded_to else ""
+
+    @Property(str, notify=resultChanged)
+    def uploadedAtLocal(self) -> str:
+        """When the upload happened, in local time with an explicit offset (or '')."""
+        if self._report is not None and self._report.uploaded_at is not None:
+            from prescan.core.report import format_local_time
+
+            return format_local_time(self._report.uploaded_at)
+        return ""
+
     # ---- stage 13: cloud upload offer (asked AFTER the scan, §6.2) ----- #
     # Consent is a deliberate action on the result screen, never a pre-scan prompt:
     # whether an upload could help is only known once the scan has run, and asking up

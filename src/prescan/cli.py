@@ -344,12 +344,10 @@ def history(
 
 
 def _local_time(dt: datetime) -> str:
-    """Render a stored-UTC instant in the machine's local zone with an explicit offset.
+    """Local time with an explicit offset -- one project-wide rule (see report.py)."""
+    from prescan.core.report import format_local_time
 
-    Times are stored in UTC but shown local, with the offset spelled out, so no one
-    mistakes a UTC clock for their own wall time (the report and the UI follow suit).
-    """
-    return dt.astimezone().isoformat(timespec="seconds")
+    return format_local_time(dt)
 
 
 def _print_human(report: ScanReport, *, quiet: bool) -> None:

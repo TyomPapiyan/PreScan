@@ -296,3 +296,35 @@ def test_history_records_upload_fields_file_and_url(tmp_path: Path) -> None:
     rows = storage.list_history(limit=10)
     assert all(r.uploaded_to == "virustotal" for r in rows)
     assert all(r.uploaded_at is not None for r in rows)
+
+
+def test_history_row_leaks_no_secret(tmp_path: Path) -> None:
+    """Point 17: no API key or one-time upload URL appears in a history row's fields."""
+    storage = Storage(tmp_path / "db.sqlite")
+    when = datetime(2026, 9, 6, 10, 30, tzinfo=UTC)
+    storage.add_history(_report("a" * 64, Verdict.SAFE, uploaded_to="virustotal", uploaded_at=when))
+
+    row = storage.list_history(limit=1)[0]
+    blob = " ".join(
+        str(x)
+        for x in (row.scan_id, row.target, row.sources, row.sha256, row.uploaded_to, row.verdict)
+    )
+    assert "vt_secret_key_DEADBEEF" not in blob
+    assert "_ah/upload/ONE_TIME_SECRET" not in blob
+
+
+def test_cached_uploaded_report_round_trips_without_reoffer(tmp_path: Path) -> None:
+    """Point 15/25: a cached report that recorded an upload keeps upload_could_help False.
+
+    upload_could_help is False whenever a file was uploaded (core sets it so), so the
+    cached copy never re-offers an upload; from_cache is set on read.
+    """
+    storage = Storage(tmp_path / "db.sqlite")
+    when = datetime(2026, 9, 6, 10, 30, tzinfo=UTC)
+    storage.put_cache(_report("a" * 64, Verdict.SAFE, uploaded_to="virustotal", uploaded_at=when))
+
+    cached = storage.get_cached("a" * 64, ttl_days=7)
+    assert cached is not None
+    assert cached.from_cache is True
+    assert cached.uploaded_to == "virustotal"
+    assert cached.upload_could_help is False  # recorded upload -> never re-offered

@@ -177,6 +177,23 @@ Item {
             text: qsTr("Incomplete scan — some sources were unavailable")
             color: theme.suspicious
         }
+        Label {
+            visible: Bridge.fromCache
+            text: qsTr("Loaded from cache — this is a stored result, not a scan running now.")
+            color: theme.subtext
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
+        // A recorded upload is a PAST event with its own timestamp -- never phrased as
+        // happening now, so a cached result cannot be misread (§6.2, the cache trap).
+        Label {
+            visible: Bridge.uploadedTo.length > 0
+            text: qsTr("This file was uploaded to %1 at %2. It left this computer and cannot be recalled.")
+                .arg(Bridge.uploadedTo).arg(Bridge.uploadedAtLocal)
+            color: theme.dangerous
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
+        }
         Label { text: qsTr("WHY THIS VERDICT"); color: theme.subtext; font.pixelSize: 12 }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true; clip: true; spacing: 8

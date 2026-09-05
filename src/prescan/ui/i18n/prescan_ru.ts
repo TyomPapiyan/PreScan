@@ -32,103 +32,103 @@
 <context>
     <name>Bridge</name>
     <message>
-        <location filename="../bridge.py" line="319"/>
+        <location filename="../bridge.py" line="341"/>
         <source>ML model: %1% likely malicious</source>
         <extracomment>URL-scan sources that receive the FULL URL, vs Safe Browsing (hash-prefix).</extracomment>
         <translation>ML-модель: %1% вероятность вредоносности</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="320"/>
+        <location filename="../bridge.py" line="342"/>
         <source>ML model could not score the file</source>
         <translation>ML-модель не смогла оценить файл</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="346"/>
+        <location filename="../bridge.py" line="368"/>
         <source>Downloading the ML model…</source>
         <translation>Загрузка ML-модели…</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="350"/>
+        <location filename="../bridge.py" line="372"/>
         <source>Model download failed: %1</source>
         <translation>Не удалось загрузить модель: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="352"/>
+        <location filename="../bridge.py" line="374"/>
         <source>ML model installed.</source>
         <translation>ML-модель установлена.</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="363"/>
+        <location filename="../bridge.py" line="385"/>
         <source>Updating ClamAV databases…</source>
         <translation>Обновление баз ClamAV…</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="367"/>
+        <location filename="../bridge.py" line="389"/>
         <source>ClamAV update failed: %1</source>
         <translation>Не удалось обновить ClamAV: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="380"/>
+        <location filename="../bridge.py" line="402"/>
         <source>Downloading YARA rules…</source>
         <translation>Загрузка правил YARA…</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="384"/>
+        <location filename="../bridge.py" line="406"/>
         <source>Rule update failed: %1</source>
         <translation>Не удалось обновить правила: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="386"/>
+        <location filename="../bridge.py" line="408"/>
         <source>Installed %1 YARA rule file(s).</source>
         <translation>Установлено файлов правил YARA: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="691"/>
+        <location filename="../bridge.py" line="713"/>
         <source>Ready</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="692"/>
+        <location filename="../bridge.py" line="714"/>
         <source>Add an API key in Settings</source>
         <translation>Добавьте API-ключ в настройках</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="693"/>
+        <location filename="../bridge.py" line="715"/>
         <source>Rules not downloaded — update rules</source>
         <translation>Правила не загружены — обновите правила</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="694"/>
+        <location filename="../bridge.py" line="716"/>
         <source>ML model not installed</source>
         <translation>ML-модель не установлена</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="695"/>
+        <location filename="../bridge.py" line="717"/>
         <source>Not installed</source>
         <translation>Не установлено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="696"/>
+        <location filename="../bridge.py" line="718"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation>Источник временно недоступен (офлайн)</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="697"/>
+        <location filename="../bridge.py" line="719"/>
         <source>Source temporarily unavailable</source>
         <translation>Источник временно недоступен</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="698"/>
+        <location filename="../bridge.py" line="720"/>
         <source>Not available on this OS</source>
         <translation>Недоступно в этой ОС</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="699"/>
+        <location filename="../bridge.py" line="721"/>
         <source>Disabled</source>
         <translation>Отключено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="700"/>
+        <location filename="../bridge.py" line="722"/>
         <source>File too large for this engine</source>
         <translation>Файл слишком большой для этого движка</translation>
     </message>
@@ -314,7 +314,7 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
     </message>
     <message>
         <location filename="../qml/pages/ScanPage.qml" line="152"/>
-        <location filename="../qml/pages/ScanPage.qml" line="234"/>
+        <location filename="../qml/pages/ScanPage.qml" line="251"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
@@ -324,92 +324,102 @@ exe · msi · dll · apk · pdf · docx · zip · 7z …</translation>
         <translation>Проверка неполная — часть источников недоступна</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="180"/>
+        <location filename="../qml/pages/ScanPage.qml" line="182"/>
+        <source>Loaded from cache — this is a stored result, not a scan running now.</source>
+        <translation>Загружено из кэша — это сохранённый результат, а не проверка, идущая сейчас.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="191"/>
+        <source>This file was uploaded to %1 at %2. It left this computer and cannot be recalled.</source>
+        <translation>Файл был загружен в %1 (%2). Файл покинул этот компьютер и не может быть отозван.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ScanPage.qml" line="197"/>
         <source>WHY THIS VERDICT</source>
         <translation>ПОЧЕМУ ТАКОЙ ВЕРДИКТ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="195"/>
+        <location filename="../qml/pages/ScanPage.qml" line="212"/>
         <source>Send file to the cloud for scanning</source>
         <translation>Отправить файл в облако для проверки</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="204"/>
+        <location filename="../qml/pages/ScanPage.qml" line="221"/>
         <source>Turn off “Never upload files to the cloud” in Settings to enable this.</source>
         <translation>Чтобы включить, снимите «Никогда не загружать файлы в облако» в настройках.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="209"/>
+        <location filename="../qml/pages/ScanPage.qml" line="226"/>
         <source>Save report…</source>
         <translation>Сохранить отчёт…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="210"/>
+        <location filename="../qml/pages/ScanPage.qml" line="227"/>
         <source>Quarantine</source>
         <translation>Карантин</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="212"/>
+        <location filename="../qml/pages/ScanPage.qml" line="229"/>
         <source>New scan</source>
         <translation>Новая проверка</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="225"/>
+        <location filename="../qml/pages/ScanPage.qml" line="242"/>
         <source>Send this file to the cloud?</source>
         <translation>Отправить этот файл в облако?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="229"/>
+        <location filename="../qml/pages/ScanPage.qml" line="246"/>
         <source>Send file to the cloud</source>
         <translation>Отправить файл в облако</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="247"/>
+        <location filename="../qml/pages/ScanPage.qml" line="264"/>
         <source>This is about the file downloaded from the link, not the address itself. Consenting to scan the link does not cover uploading its contents.</source>
         <translation>Речь о файле, скачанном по ссылке, а не об адресе. Согласие на проверку ссылки не покрывает загрузку её содержимого.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="253"/>
+        <location filename="../qml/pages/ScanPage.qml" line="270"/>
         <source>These exact details will be sent to %1:</source>
         <translation>В %1 будет отправлено именно это:</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="259"/>
+        <location filename="../qml/pages/ScanPage.qml" line="276"/>
         <source>File: %1</source>
         <translation>Файл: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="265"/>
+        <location filename="../qml/pages/ScanPage.qml" line="282"/>
         <source>Size: %1</source>
         <translation>Размер: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="271"/>
+        <location filename="../qml/pages/ScanPage.qml" line="288"/>
         <source>SHA-256: %1</source>
         <translation>SHA-256: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="277"/>
+        <location filename="../qml/pages/ScanPage.qml" line="294"/>
         <source>The file will leave your machine in full. Once it is sent, it cannot be recalled.</source>
         <translation>Файл целиком покинет ваш компьютер. После отправки его нельзя отозвать.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="283"/>
+        <location filename="../qml/pages/ScanPage.qml" line="300"/>
         <source>Files you submit may be shared with premium %1 customers, and the scan report is shared with the public %1 community.</source>
         <translation>Отправленные файлы могут передаваться премиум-клиентам %1, а отчёт о проверке публикуется сообществу %1.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="289"/>
+        <location filename="../qml/pages/ScanPage.qml" line="306"/>
         <source>If you cancel after sending starts, PreScan stops waiting for the result, but the file has already left your machine.</source>
         <translation>Если отменить после начала отправки, PreScan перестанет ждать результат, но файл уже покинул ваш компьютер.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="297"/>
+        <location filename="../qml/pages/ScanPage.qml" line="314"/>
         <source>HTML report (*.html)</source>
         <translation>Отчёт HTML (*.html)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/ScanPage.qml" line="297"/>
+        <location filename="../qml/pages/ScanPage.qml" line="314"/>
         <source>PDF report (*.pdf)</source>
         <translation>Отчёт PDF (*.pdf)</translation>
     </message>

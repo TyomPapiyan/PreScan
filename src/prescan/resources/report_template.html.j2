@@ -37,6 +37,16 @@
         {{ report.unavailable_sources | join(", ") }}.</p>
     {% endif %}
 
+    {% if report.uploaded_to %}
+      <p class="warn">
+        {%- if lang == 'ru' %}
+        Файл был загружен в {{ report.uploaded_to }} ({{ uploaded_at_local }}). Файл покинул этот компьютер и не может быть отозван.
+        {%- else %}
+        This file was uploaded to {{ report.uploaded_to }} at {{ uploaded_at_local }}. The file left this computer and cannot be recalled.
+        {%- endif %}
+      </p>
+    {% endif %}
+
     {% if report.file %}
       <table class="meta">
         <tr><td>File</td><td>{{ report.file.name }}</td></tr>

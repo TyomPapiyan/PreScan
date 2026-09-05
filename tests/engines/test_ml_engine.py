@@ -81,7 +81,9 @@ async def test_infer_signal_mapping(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, malicious: float, severity: Severity
 ) -> None:
     target = tmp_path / "sample.bin"
-    target.write_bytes(b"hello world, some content here " * 8)
+    # Prepend the PE magic so the §H file-type gate passes and inference runs -- these
+    # bytes only need to be a supported (PE/ELF) type; the session is faked anyway.
+    target.write_bytes(b"MZ" + b"hello world, some content here " * 8)
     engine = MLEngine(tmp_path / "model.onnx")
     monkeypatch.setattr(engine, "_ensure_session", lambda: _FakeSession(malicious))
 
@@ -100,8 +102,9 @@ async def test_infer_signal_mapping(
 @pytest.mark.asyncio
 async def test_scan_skips_oversized_file(tmp_path: Path) -> None:
     """Above the size cap the stage is SKIPPED with a clear reason (§16.9 precedent)."""
+    # PE magic so the §H type gate passes; the size limit is what we are testing here.
     target = tmp_path / "big.bin"
-    target.write_bytes(b"x")  # real bytes tiny; size is faked in the context
+    target.write_bytes(b"MZ")  # real bytes tiny; size is faked in the context
     engine = MLEngine(tmp_path / "model.onnx")
     with pytest.raises(EngineSkipped) as excinfo:
         await engine.scan(_ctx(target, tmp_path, size=ML_MAX_BYTES + 1))
@@ -130,12 +133,50 @@ async def test_extraction_is_cancellable(tmp_path: Path, monkeypatch: pytest.Mon
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("magic", "supported"),
+    [
+        (b"MZ\x90\x00", True),  # Windows PE
+        (b"\x7fELF\x02\x01", True),  # Linux ELF
+        (b"%PDF-1.7\n", False),  # PDF
+        (b"\x89PNG\r\n\x1a\n", False),  # PNG
+        (b"\xff\xd8\xff\xe0JFIF", False),  # JPEG
+        (b"PK\x03\x04zip", False),  # zip
+        (b"# a markdown note\n", False),  # text
+        (b'{\n  "k": 1\n}\n', False),  # json
+    ],
+)
+async def test_ml_runs_only_on_pe_and_elf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, magic: bytes, supported: bool
+) -> None:
+    """Points 19-20: ML runs on PE/ELF; every other type is skipped with a distinct reason.
+
+    A non-executable never reaches inference, so no probability signal is produced -- the
+    number cannot land in the report or the verdict. A PE/ELF runs exactly as before.
+    """
+    target = tmp_path / "sample"
+    target.write_bytes(magic + b"\x00" * 128)
+    engine = MLEngine(tmp_path / "model.onnx")
+    monkeypatch.setattr(engine, "_ensure_session", lambda: _FakeSession(0.9))
+
+    if supported:
+        signals = await engine.scan(_ctx(target, tmp_path))
+        assert len(signals) == 1 and signals[0].source == "ml"
+        assert "probability" in signals[0].data  # ML spoke: the number exists
+    else:
+        with pytest.raises(EngineSkipped) as excinfo:
+            await engine.scan(_ctx(target, tmp_path))
+        assert excinfo.value.availability is Availability.UNSUPPORTED_FILE_TYPE
+        assert "PE/ELF" in excinfo.value.summary
+
+
+@pytest.mark.asyncio
 async def test_scan_never_raises_on_failure(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A model/feature error yields one INFO signal, never an exception (§10.4)."""
     target = tmp_path / "sample.bin"
-    target.write_bytes(b"content")
+    target.write_bytes(b"MZ" + b"content")  # PE magic so the §H type gate passes
     engine = MLEngine(tmp_path / "model.onnx")
 
     def _boom() -> Any:

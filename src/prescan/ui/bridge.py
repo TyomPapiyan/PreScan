@@ -727,6 +727,7 @@ class Bridge(QObject):
             Availability.UNSUPPORTED_OS.value: self.tr("Not available on this OS"),
             Availability.DISABLED.value: self.tr("Disabled"),
             Availability.TOO_LARGE.value: self.tr("File too large for this engine"),
+            Availability.UNSUPPORTED_FILE_TYPE.value: self.tr("Does not apply to this file type"),
         }
         return mapping.get(availability, detail or availability)
 

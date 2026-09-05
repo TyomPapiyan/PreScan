@@ -76,11 +76,17 @@ def score(
     *,
     had_authoritative_source: bool,
     target_noun: str = "file",
+    ml_inapplicable: bool = False,
 ) -> tuple[Verdict, int, str, str]:
     """Return (verdict, risk_score, reason_key, reason_en). Pure function, no I/O.
 
     ``target_noun`` ("file" or "URL") is interpolated into the human reason so
     URL scans read naturally; the reason_key stays target-neutral for i18n (M5).
+
+    ``ml_inapplicable`` is True when the ML stage was skipped because the file is not a
+    type the model handles (not PE/ELF, §H). Like a valid trusted signature (§16.12), it
+    satisfies the §8.3 ML-clearance condition: an engine that cannot speak to a file must
+    not silently hold an otherwise-clean file out of SAFE.
     """
     raw = sum(s.weight for s in signals)
     base_score = max(0, min(100, raw))
@@ -132,7 +138,7 @@ def score(
     # inflates the probability of correctly-signed PEs by up to ~0.24 -- enough to
     # keep a clean signed Windows binary out of SAFE forever. A genuinely malicious
     # score (ml_prob >= 0.70) still escalates above and never reaches here.
-    ml_ok = (ml_prob is not None and ml_prob < 0.20) or trusted
+    ml_ok = (ml_prob is not None and ml_prob < 0.20) or trusted or ml_inapplicable
     # The ML signal is scored entirely through ml_prob (escalation §8.2 at 0.70,
     # clearance §8.3 at 0.20 plus the signature compensation above). Its severity
     # exists only so the user sees an honest tier in the signal list; counting it

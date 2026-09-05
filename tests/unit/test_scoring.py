@@ -180,6 +180,31 @@ def test_safe_when_ml_absent_but_trusted_signature() -> None:
     assert verdict is Verdict.SAFE
 
 
+def test_ml_inapplicable_clears_clean_non_executable_to_safe() -> None:
+    """Points 11-12/22: a clean non-PE/ELF file (ML skipped by type) still reaches SAFE.
+
+    With an authoritative-clean source and no LOW+ signal, ML being inapplicable satisfies
+    the §8.3 clearance the way a trusted signature does (§16.12) -- otherwise every text
+    file and image would be stuck in UNKNOWN, a regression."""
+    verdict, risk, _k, _r = score([], had_authoritative_source=True, ml_inapplicable=True)
+    assert verdict is Verdict.SAFE
+    assert risk <= 20
+
+
+def test_without_ml_inapplicable_the_same_clean_file_is_unknown() -> None:
+    """The mirror of the above: without the type-inapplicable clearance the same clean,
+    ML-less file is UNKNOWN -- proving that clearance is what lifts it to SAFE (point 11)."""
+    verdict, _r, _k, _rr = score([], had_authoritative_source=True, ml_inapplicable=False)
+    assert verdict is Verdict.UNKNOWN
+
+
+def test_executable_with_low_ml_still_safe() -> None:
+    """Point 21: a PE/ELF with a low ML score clears to SAFE exactly as before -- the type
+    gate does not change how executables are handled (this is the /bin/ls case)."""
+    verdict, _r, _k, _rr = score([_ml(0.05)], had_authoritative_source=True, ml_inapplicable=False)
+    assert verdict is Verdict.SAFE
+
+
 def test_trusted_signature_clears_biased_ml_probability() -> None:
     """A trusted signature clears a signed file even when the (zero-authenticode)
     ML probability sits above 0.20 -- the known §16.12 bias must not block SAFE."""

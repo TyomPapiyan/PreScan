@@ -36,6 +36,24 @@ _BENIGN_PROB = 0.20
 #: Above this the ml stage is skipped like the ClamAV size limit (§16.9).
 ML_MAX_BYTES: Final = 256 * 1024 * 1024
 
+#: The EMBER2024 classifier scores executables. Measurement over clean system files
+#: (M8/H) showed it reliable on Windows PE and Linux ELF (clean ELF scored < 0.12) but
+#: pure noise on data formats -- clean PNG/JPEG/gzip/text scored 0.6-0.96, i.e. false
+#: SUSPICIOUS. So the engine runs ONLY on PE/ELF and is skipped as UNSUPPORTED_FILE_TYPE
+#: otherwise; its probability then never reaches the report or the verdict.
+_PE_MAGIC = b"MZ"
+_ELF_MAGIC = b"\x7fELF"
+
+
+def _is_ml_supported(path: Path) -> bool:
+    """True if the file is a PE or ELF executable -- the formats the model handles."""
+    try:
+        with path.open("rb") as fh:
+            head = fh.read(4)
+    except OSError:
+        return False
+    return head[:2] == _PE_MAGIC or head[:4] == _ELF_MAGIC
+
 
 class MLEngine:
     """ONNX malware classifier. Inactive until a model.onnx is installed."""
@@ -73,6 +91,13 @@ class MLEngine:
 
     async def scan(self, ctx: ScanContext) -> list[Signal]:
         """Extract features and run inference. Never raises on bad input (§10.4)."""
+        if not _is_ml_supported(ctx.path):
+            # Not a PE/ELF executable -> the model would only emit noise (H). Skip with a
+            # distinct availability so the report says "does not apply", not a fake score.
+            raise EngineSkipped(
+                Availability.UNSUPPORTED_FILE_TYPE,
+                f"ML applies to PE/ELF executables only; this is {ctx.info.detected_type}",
+            )
         if ctx.info.size > ML_MAX_BYTES:
             raise EngineSkipped(
                 Availability.TOO_LARGE,

@@ -194,7 +194,10 @@ class Pipeline:
                     )
 
             verdict, risk, reason_key, reason_en = self._score(
-                signals, had_authoritative=had_authoritative, cancelled=cancel.is_set()
+                signals,
+                had_authoritative=had_authoritative,
+                cancelled=cancel.is_set(),
+                ml_inapplicable=self._ml_inapplicable(stages),
             )
         except (asyncio.CancelledError, ScanCancelled):
             # Cancel fired mid-scan (e.g. during large-file hashing): finish with a
@@ -971,6 +974,7 @@ class Pipeline:
         had_authoritative: bool,
         cancelled: bool,
         target_noun: str = "file",
+        ml_inapplicable: bool = False,
     ) -> tuple[Verdict, int, str, str]:
         """Run the scoring stage; a cancelled scan is always UNKNOWN."""
         if cancelled:
@@ -980,7 +984,20 @@ class Pipeline:
                 "verdict.cancelled",
                 f"{target_noun.capitalize()} scan cancelled by the user",
             )
-        return score(signals, had_authoritative_source=had_authoritative, target_noun=target_noun)
+        return score(
+            signals,
+            had_authoritative_source=had_authoritative,
+            target_noun=target_noun,
+            ml_inapplicable=ml_inapplicable,
+        )
+
+    @staticmethod
+    def _ml_inapplicable(stages: list[StageResult]) -> bool:
+        """True if the ml stage was skipped because the file type is unsupported (§H)."""
+        return any(
+            s.stage_id == "ml" and s.availability is Availability.UNSUPPORTED_FILE_TYPE
+            for s in stages
+        )
 
     # ------------------------------------------------------------------ #
     # Stage helpers

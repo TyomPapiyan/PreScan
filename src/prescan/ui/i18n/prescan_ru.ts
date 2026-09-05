@@ -4,27 +4,27 @@
 <context>
     <name>AboutPage</name>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="11"/>
+        <location filename="../qml/pages/AboutPage.qml" line="12"/>
         <source>About PreScan</source>
         <translation>О программе PreScan</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="17"/>
+        <location filename="../qml/pages/AboutPage.qml" line="18"/>
         <source>PreScan is not an antivirus and does not replace your system&apos;s protection. The verdict is informational. The decision to run a file is yours.</source>
         <translation>PreScan не является антивирусом и не заменяет штатную защиту системы. Вердикт носит информационный характер. Ответственность за запуск файла лежит на пользователе.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="24"/>
+        <location filename="../qml/pages/AboutPage.qml" line="25"/>
         <source>Built with Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) is vendored in ui/vendor/RinUI. The malware classifier and its feature extractor derive from the EMBER2024 project (Apache-2.0). Full licenses are in the licenses/ folder. ClamAV is used as an external process, not linked.</source>
         <translation>Собрано на Qt / PySide6 (LGPLv3), YARA-X, LIEF, oletools, pikepdf. RinUI (MIT) вендорится в ui/vendor/RinUI. Классификатор вредоносности и его экстрактор признаков основаны на проекте EMBER2024 (Apache-2.0). Полные лицензии — в папке licenses/. ClamAV вызывается как внешний процесс, без линковки.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="38"/>
+        <location filename="../qml/pages/AboutPage.qml" line="39"/>
         <source>PySide6 / Qt are used under the LGPLv3. Corresponding source: </source>
         <translation>PySide6 / Qt используются на условиях LGPLv3. Исходный код: </translation>
     </message>
     <message>
-        <location filename="../qml/pages/AboutPage.qml" line="46"/>
+        <location filename="../qml/pages/AboutPage.qml" line="47"/>
         <source>Google Safe Browsing and the VirusTotal public API are free for non-commercial use only.</source>
         <translation>Google Safe Browsing и публичный API VirusTotal бесплатны только для некоммерческого использования.</translation>
     </message>
@@ -32,105 +32,110 @@
 <context>
     <name>Bridge</name>
     <message>
-        <location filename="../bridge.py" line="341"/>
+        <location filename="../bridge.py" line="348"/>
         <source>ML model: %1% likely malicious</source>
         <extracomment>URL-scan sources that receive the FULL URL, vs Safe Browsing (hash-prefix).</extracomment>
         <translation>ML-модель: %1% вероятность вредоносности</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="342"/>
+        <location filename="../bridge.py" line="349"/>
         <source>ML model could not score the file</source>
         <translation>ML-модель не смогла оценить файл</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="368"/>
+        <location filename="../bridge.py" line="375"/>
         <source>Downloading the ML model…</source>
         <translation>Загрузка ML-модели…</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="372"/>
+        <location filename="../bridge.py" line="379"/>
         <source>Model download failed: %1</source>
         <translation>Не удалось загрузить модель: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="374"/>
+        <location filename="../bridge.py" line="381"/>
         <source>ML model installed.</source>
         <translation>ML-модель установлена.</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="385"/>
+        <location filename="../bridge.py" line="392"/>
         <source>Updating ClamAV databases…</source>
         <translation>Обновление баз ClamAV…</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="389"/>
+        <location filename="../bridge.py" line="396"/>
         <source>ClamAV update failed: %1</source>
         <translation>Не удалось обновить ClamAV: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="402"/>
+        <location filename="../bridge.py" line="409"/>
         <source>Downloading YARA rules…</source>
         <translation>Загрузка правил YARA…</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="406"/>
+        <location filename="../bridge.py" line="413"/>
         <source>Rule update failed: %1</source>
         <translation>Не удалось обновить правила: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="408"/>
+        <location filename="../bridge.py" line="415"/>
         <source>Installed %1 YARA rule file(s).</source>
         <translation>Установлено файлов правил YARA: %1</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="713"/>
+        <location filename="../bridge.py" line="720"/>
         <source>Ready</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="714"/>
+        <location filename="../bridge.py" line="721"/>
         <source>Add an API key in Settings</source>
         <translation>Добавьте API-ключ в настройках</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="715"/>
+        <location filename="../bridge.py" line="722"/>
         <source>Rules not downloaded — update rules</source>
         <translation>Правила не загружены — обновите правила</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="716"/>
+        <location filename="../bridge.py" line="723"/>
         <source>ML model not installed</source>
         <translation>ML-модель не установлена</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="717"/>
+        <location filename="../bridge.py" line="724"/>
         <source>Not installed</source>
         <translation>Не установлено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="718"/>
+        <location filename="../bridge.py" line="725"/>
         <source>Source temporarily unavailable (offline)</source>
         <translation>Источник временно недоступен (офлайн)</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="719"/>
+        <location filename="../bridge.py" line="726"/>
         <source>Source temporarily unavailable</source>
         <translation>Источник временно недоступен</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="720"/>
+        <location filename="../bridge.py" line="727"/>
         <source>Not available on this OS</source>
         <translation>Недоступно в этой ОС</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="721"/>
+        <location filename="../bridge.py" line="728"/>
         <source>Disabled</source>
         <translation>Отключено</translation>
     </message>
     <message>
-        <location filename="../bridge.py" line="722"/>
+        <location filename="../bridge.py" line="729"/>
         <source>File too large for this engine</source>
         <translation>Файл слишком большой для этого движка</translation>
+    </message>
+    <message>
+        <location filename="../bridge.py" line="731"/>
+        <source>Does not apply to this file type</source>
+        <translation>Неприменимо к этому типу файла</translation>
     </message>
 </context>
 <context>

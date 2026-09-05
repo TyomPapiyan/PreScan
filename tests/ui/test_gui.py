@@ -142,6 +142,14 @@ def test_availability_text_covers_too_large(gui: Any) -> None:
     assert text and text != Availability.TOO_LARGE.value
 
 
+def test_availability_text_covers_unsupported_file_type(gui: Any) -> None:
+    """The new §H unsupported-file-type availability must render a real label too."""
+    from prescan.core.models import Availability
+
+    text = gui.bridge.availabilityText(Availability.UNSUPPORTED_FILE_TYPE.value, "")
+    assert text and text != Availability.UNSUPPORTED_FILE_TYPE.value
+
+
 def test_ml_signal_title_shows_percentage(gui: Any) -> None:
     """The ML signal must render its probability as a percentage (DoD M6a)."""
     from prescan.core.models import Severity, Signal, SourceKind

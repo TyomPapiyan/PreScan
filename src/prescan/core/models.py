@@ -77,6 +77,7 @@ class Availability(StrEnum):
     UNSUPPORTED_OS = "unsupported_os"
     DISABLED = "disabled"  # switched off by the user
     TOO_LARGE = "too_large"  # file exceeds an engine's size limit (§16.9)
+    UNSUPPORTED_FILE_TYPE = "unsupported_file_type"  # engine does not apply to this format
     ERROR = "error"
 
 

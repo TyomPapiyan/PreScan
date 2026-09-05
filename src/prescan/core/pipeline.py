@@ -69,6 +69,13 @@ OnStage = Callable[[StageResult], None]
 #: Engines whose completion counts as an authoritative clean/dirty verdict (§8.3).
 _AUTHORITATIVE = frozenset({"clamav", "defender"})
 
+#: Stage title keys, named so the upload gate can tell a file / downloaded-body hash
+#: reputation (STAGE_REPUTATION) apart from a URL reputation (STAGE_URL_REPUTATION)
+#: without a fragile string literal. Used both where the stages are created and in the
+#: gate, so renaming a key for UI text can never silently change the gate (F0 points 9-11).
+STAGE_REPUTATION = "stage.reputation"
+STAGE_URL_REPUTATION = "stage.url_reputation"
+
 
 def _scope_downloaded_body(signal: Signal) -> Signal:
     """Tag a signal as describing the URL's downloaded body, not the URL (§8.3)."""
@@ -93,7 +100,7 @@ def upload_gate_reason(
         return "the file is already flagged dangerous locally"
     rep_done = any(
         s.stage_id == provider_name
-        and s.title_key == "stage.reputation"
+        and s.title_key == STAGE_REPUTATION
         and s.status is StageStatus.DONE
         for s in stages
     )
@@ -558,7 +565,7 @@ class Pipeline:
         for provider in runnable:
             st = StageResult(
                 stage_id=provider.name,
-                title_key="stage.reputation",
+                title_key=STAGE_REPUTATION,
                 status=StageStatus.RUNNING,
                 started_at=datetime.now(UTC),
             )
@@ -608,7 +615,7 @@ class Pipeline:
         unavailable: list[str],
         on_stage: OnStage | None,
         *,
-        title_key: str = "stage.reputation",
+        title_key: str = STAGE_REPUTATION,
     ) -> None:
         """Record a SKIPPED stage for an unavailable provider (NO_KEY, OFFLINE)."""
         now = datetime.now(UTC)
@@ -645,6 +652,8 @@ class Pipeline:
         signals: list[Signal] = []
         unavailable: list[str] = []
         file_info_dl: FileInfo | None = None
+        uploaded_to: str | None = None
+        uploaded_at: datetime | None = None
         net = request.allow_network and self._config.allow_network
 
         # Stage 1: normalize
@@ -725,9 +734,13 @@ class Pipeline:
             # URLs needs an authoritative-clean reputation signal -- so its had_auth
             # flag is intentionally not consumed here.
             if request.allow_download and not cancel.is_set():
-                file_info_dl, file_signals, _dl_auth = await self._download_and_scan(
-                    request, stages, unavailable, on_stage, cancel
-                )
+                (
+                    file_info_dl,
+                    file_signals,
+                    _dl_auth,
+                    uploaded_to,
+                    uploaded_at,
+                ) = await self._download_and_scan(request, stages, unavailable, on_stage, cancel)
                 signals += file_signals
         else:
             self._skip_named(
@@ -737,7 +750,7 @@ class Pipeline:
                 stages,
                 unavailable,
                 on_stage,
-                title_key="stage.url_reputation",
+                title_key=STAGE_URL_REPUTATION,
             )
 
         # URL SAFE is decided by an authoritative-clean signal (§8.3), so had_authoritative
@@ -766,9 +779,12 @@ class Pipeline:
             verdict_reason_en=reason_en,
             incomplete=bool(unavailable) or cancel.is_set(),
             unavailable_sources=unavailable,
+            uploaded_to=uploaded_to,
+            uploaded_at=uploaded_at,
             # Same shared decision as the file branch: an unknown downloaded body that
             # is not already condemned could be uploaded for a fresh scan (point 6).
-            upload_could_help=upload_gate_reason(signals, stages, upload_provider_name()) is None,
+            upload_could_help=uploaded_to is None
+            and upload_gate_reason(signals, stages, upload_provider_name()) is None,
         )
 
     async def _download_and_scan(
@@ -778,10 +794,12 @@ class Pipeline:
         unavailable: list[str],
         on_stage: OnStage | None,
         cancel: asyncio.Event,
-    ) -> tuple[FileInfo | None, list[Signal], bool]:
+    ) -> tuple[FileInfo | None, list[Signal], bool, str | None, datetime | None]:
         """Stage 8: safely download the URL body and run the file pipeline over it."""
         assert request.url is not None
         signals: list[Signal] = []
+        uploaded_to: str | None = None
+        uploaded_at: datetime | None = None
         with self._stage("download", "stage.download", stages, on_stage) as st:
             try:
                 downloaded = await safe_download(
@@ -796,7 +814,7 @@ class Pipeline:
                 st.availability = Availability.ERROR
                 st.error = str(exc)
                 unavailable.append("download")
-                return None, signals, False
+                return None, signals, False, None, None
             st.summary = "download.bin"
 
         workdir = downloaded.parent
@@ -820,7 +838,18 @@ class Pipeline:
                 )
                 signals += [_scope_downloaded_body(s) for s in rep_signals]
 
-            return file_info, signals, had_auth
+                # Stage 13 for the downloaded body -- same gates as the file branch,
+                # consent-gated by the lock + per-run flag (§6.2). Runs BEFORE the temp
+                # folder is removed (point 12); the finally below still cleans up on any
+                # path. Cloud-scan signals are scoped downloaded-body so a clean result
+                # cannot clear the link to SAFE either (the §8.3 asymmetry, point 9).
+                if request.allow_cloud_upload and not self._config.never_upload_files:
+                    up_signals, uploaded_to, uploaded_at = await self._run_cloud_upload(
+                        file_info, signals, request, stages, unavailable, on_stage, cancel
+                    )
+                    signals += [_scope_downloaded_body(s) for s in up_signals]
+
+            return file_info, signals, had_auth, uploaded_to, uploaded_at
         finally:
             shutil.rmtree(workdir, ignore_errors=True)
 
@@ -853,7 +882,7 @@ class Pipeline:
                     stages,
                     unavailable,
                     on_stage,
-                    title_key="stage.url_reputation",
+                    title_key=STAGE_URL_REPUTATION,
                 )
                 privacy_disabled.append(provider.name)
                 continue
@@ -868,14 +897,14 @@ class Pipeline:
                     stages,
                     unavailable,
                     on_stage,
-                    title_key="stage.url_reputation",
+                    title_key=STAGE_URL_REPUTATION,
                 )
 
         stage_by_name: dict[str, StageResult] = {}
         for provider in runnable:
             st = StageResult(
                 stage_id=provider.name,
-                title_key="stage.url_reputation",
+                title_key=STAGE_URL_REPUTATION,
                 status=StageStatus.RUNNING,
                 started_at=datetime.now(UTC),
             )

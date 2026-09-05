@@ -240,6 +240,13 @@ Item {
                 width: parent.width
                 spacing: 8
                 Label {
+                    visible: Bridge.uploadSubjectIsDownloaded
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: theme.text
+                    text: qsTr("This is about the file downloaded from the link, not the address itself. Consenting to scan the link does not cover uploading its contents.")
+                }
+                Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: theme.text

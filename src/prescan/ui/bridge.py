@@ -194,6 +194,13 @@ class Bridge(QObject):
     def uploadFileSha256(self) -> str:
         return self._report.file.sha256 if self._report and self._report.file else ""
 
+    @Property(bool, notify=resultChanged)
+    def uploadSubjectIsDownloaded(self) -> bool:
+        """True when the upload subject is a file downloaded from a link, not a chosen
+        file -- the dialog then says so explicitly (§6.2): consent to scan the link does
+        not cover uploading its body."""
+        return self._report is not None and self._report.request.target_kind is TargetKind.URL
+
     @Slot()
     def uploadCurrentToCloud(self) -> None:
         """Re-run the whole scan with consent for this run (§6.2, points 8-10).

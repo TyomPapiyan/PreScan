@@ -127,6 +127,19 @@ def test_dialog_shows_what_leaves_and_does_not_soften() -> None:
     assert "already left your machine" in dialog  # cancel-after-send is spelled out
 
 
+def test_dialog_names_the_downloaded_file_for_a_link() -> None:
+    """Point 16: for a link-downloaded file the dialog says so, keyed to the subject flag.
+
+    A dedicated notice, shown only when the subject is a downloaded body, states it is
+    about the downloaded file and not the address -- consent to scan the link does not
+    cover uploading its contents.
+    """
+    dialog = _cloud_dialog()
+    assert "Bridge.uploadSubjectIsDownloaded" in dialog
+    assert "downloaded from the link" in dialog
+    assert "not the address" in dialog
+
+
 # --------------------------------------------------------------------------- #
 # Behavioural helpers
 # --------------------------------------------------------------------------- #
@@ -189,6 +202,22 @@ def test_offer_reads_core_field_and_needs_a_file(gui: Any, tmp_path: Path) -> No
             _file_report(tmp_path, verdict=Verdict.SUSPICIOUS, upload_could_help=True)
         )
         assert bridge.canOfferUpload is True
+    finally:
+        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE))
+
+
+def test_subject_flag_true_for_a_link_downloaded_file(gui: Any, tmp_path: Path) -> None:
+    """Point 16: the subject flag is True for a URL scan (downloaded body), False for a file."""
+    bridge = gui.bridge
+    try:
+        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SUSPICIOUS))
+        assert bridge.uploadSubjectIsDownloaded is False  # a chosen file
+        url_report = _file_report(tmp_path, verdict=Verdict.SUSPICIOUS)
+        url_report = url_report.model_copy(
+            update={"request": ScanRequest(target_kind=TargetKind.URL, url="https://x.test/f")}
+        )
+        bridge._apply_report(url_report)
+        assert bridge.uploadSubjectIsDownloaded is True  # a link-downloaded body
     finally:
         bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE))
 

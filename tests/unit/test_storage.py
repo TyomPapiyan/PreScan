@@ -17,7 +17,13 @@ from prescan.core.models import (
 from prescan.core.storage import Storage
 
 
-def _report(sha: str, verdict: Verdict = Verdict.UNKNOWN) -> ScanReport:
+def _report(
+    sha: str,
+    verdict: Verdict = Verdict.UNKNOWN,
+    *,
+    uploaded_to: str | None = None,
+    uploaded_at: datetime | None = None,
+) -> ScanReport:
     now = datetime.now(UTC)
     file_info = FileInfo(
         path=Path("/tmp/x"),
@@ -42,6 +48,8 @@ def _report(sha: str, verdict: Verdict = Verdict.UNKNOWN) -> ScanReport:
         risk_score=0,
         verdict_reason_key="verdict.unknown",
         verdict_reason_en="r",
+        uploaded_to=uploaded_to,
+        uploaded_at=uploaded_at,
     )
 
 
@@ -113,8 +121,10 @@ def test_migration_adds_sha256_without_dropping_rows(tmp_path: Path) -> None:
     # New scans still work against the migrated table.
     storage.add_history(_report("c" * 64, Verdict.DANGEROUS))
     assert len(storage.list_history(limit=10)) == 2
-    # Successful migration leaves no backup behind.
-    assert list(tmp_path.glob("*.bak-*")) == []
+    # A successful migration now KEEPS its backup (retention policy, stage-F point 8:
+    # keep the three most recent). Previously the backup was deleted on success; the
+    # policy changed so a recent pre-migration copy is always available for rollback.
+    assert len(list(tmp_path.glob("db.sqlite.bak-*"))) == 1
 
 
 def _old_schema_db_with_row(db: Path) -> None:
@@ -158,3 +168,131 @@ def test_failed_migration_keeps_backup_and_data(
     conn = sqlite3.connect(db)
     assert conn.execute("SELECT COUNT(*) FROM history").fetchone()[0] == 1
     conn.close()
+
+
+# --------------------------------------------------------------------------- #
+# Stage F: uploaded_to / uploaded_at migration + history + backup retention
+# --------------------------------------------------------------------------- #
+def _pre_upload_schema_db(db: Path) -> None:
+    """A history table with sha256 but WITHOUT the stage-13 upload columns, one row."""
+    import sqlite3
+
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE history ("
+        "id INTEGER PRIMARY KEY, scan_id VARCHAR, target VARCHAR, "
+        "target_kind VARCHAR, verdict VARCHAR, risk_score INTEGER, "
+        "sources VARCHAR, sha256 VARCHAR, created_at DATETIME)"
+    )
+    conn.execute(
+        "INSERT INTO history (scan_id, target, target_kind, verdict, risk_score, "
+        "sources, sha256, created_at) VALUES ('s', '/tmp/old', 'file', 'safe', 0, '', "
+        "'abc', '2026-08-01 00:00:00')"
+    )
+    conn.commit()
+    conn.close()
+
+
+def _history_columns(db: Path) -> set[str]:
+    import sqlite3
+
+    conn = sqlite3.connect(db)
+    try:
+        return {row[1] for row in conn.execute("PRAGMA table_info(history)")}
+    finally:
+        conn.close()
+
+
+def test_upload_migration_adds_columns_without_touching_rows(tmp_path: Path) -> None:
+    """Point 9: old DB gains uploaded_to/uploaded_at; the existing row is untouched."""
+    db = tmp_path / "db.sqlite"
+    _pre_upload_schema_db(db)
+
+    storage = Storage(db)
+
+    assert {"uploaded_to", "uploaded_at"} <= _history_columns(db)
+    rows = storage.list_history(limit=10)
+    assert len(rows) == 1 and rows[0].target == "/tmp/old"
+    assert rows[0].uploaded_to is None and rows[0].uploaded_at is None  # default, unchanged
+
+
+def test_upload_migration_is_idempotent(tmp_path: Path) -> None:
+    """Point 9: opening the already-migrated DB again is a no-op and never raises."""
+    db = tmp_path / "db.sqlite"
+    _pre_upload_schema_db(db)
+
+    Storage(db)  # first run migrates (one backup)
+    Storage(db)  # second run: schema already current -> no migration, no new backup
+
+    assert len(list(tmp_path.glob("db.sqlite.bak-*"))) == 1
+    assert {"uploaded_to", "uploaded_at"} <= _history_columns(db)
+
+
+def test_upload_migration_backs_up_before_changing(tmp_path: Path) -> None:
+    """Point 9: the backup is taken BEFORE the schema changes -- it holds the old schema."""
+    db = tmp_path / "db.sqlite"
+    _pre_upload_schema_db(db)
+
+    Storage(db)
+
+    backups = list(tmp_path.glob("db.sqlite.bak-*"))
+    assert len(backups) == 1
+    # The copy predates the ALTER, so it must NOT contain the new columns.
+    assert "uploaded_to" not in _history_columns(backups[0])
+
+
+def test_upload_migration_skipped_when_backup_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Point 9 (+ point 7): if the backup cannot be made, the migration does not run."""
+    import prescan.core.storage as storage_mod
+
+    db = tmp_path / "db.sqlite"
+    _pre_upload_schema_db(db)
+
+    def boom(*_a: object, **_k: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(storage_mod.shutil, "copy2", boom)
+    with pytest.raises(OSError):
+        Storage(db)
+
+    # The DB was left on the old schema (no ALTER ran) and no backup exists.
+    assert "uploaded_to" not in _history_columns(db)
+    assert list(tmp_path.glob("db.sqlite.bak-*")) == []
+
+
+def test_backups_pruned_to_three_most_recent(tmp_path: Path) -> None:
+    """Point 8: keep the three most recent backups, delete older ones."""
+    db = tmp_path / "db.sqlite"
+    Storage(db)  # create a valid DB file
+    for i in range(5):
+        (tmp_path / f"db.sqlite.bak-2026010{i}-000000-000000").write_text("x")
+
+    Storage(db)._prune_backups(keep=3)
+
+    remaining = sorted(p.name for p in tmp_path.glob("db.sqlite.bak-*"))
+    assert remaining == [
+        "db.sqlite.bak-20260102-000000-000000",
+        "db.sqlite.bak-20260103-000000-000000",
+        "db.sqlite.bak-20260104-000000-000000",
+    ]
+
+
+def test_history_records_upload_fields_file_and_url(tmp_path: Path) -> None:
+    """Point 20: a history row carries uploaded_to/at, filled from the report."""
+    storage = Storage(tmp_path / "db.sqlite")
+    when = datetime(2026, 9, 6, 10, 30, tzinfo=UTC)
+
+    file_report = _report("a" * 64, Verdict.SAFE, uploaded_to="virustotal", uploaded_at=when)
+    storage.add_history(file_report)
+
+    url_report = _report("b" * 64, Verdict.UNKNOWN, uploaded_to="virustotal", uploaded_at=when)
+    url_report = url_report.model_copy(
+        update={"request": ScanRequest(target_kind=TargetKind.URL, url="https://x.test/f")}
+    )
+    storage.add_history(url_report)
+
+    rows = storage.list_history(limit=10)
+    assert all(r.uploaded_to == "virustotal" for r in rows)
+    assert all(r.uploaded_at is not None for r in rows)

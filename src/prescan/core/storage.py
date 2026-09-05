@@ -8,6 +8,7 @@ circuits the pipeline with ``from_cache=True`` (§6 stage 3).
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -46,6 +47,10 @@ class HistoryEntry(Base):
     sources: Mapped[str] = mapped_column(Text, default="")
     sha256: Mapped[str] = mapped_column(String(64), default="")
     created_at: Mapped[datetime] = mapped_column()
+    # Stage 13: filled from the report's UploadOutcome-derived fields (§6.2). NULL when
+    # the file never left the machine; added by additive migration for older DBs.
+    uploaded_to: Mapped[str | None] = mapped_column(String(64), default=None)
+    uploaded_at: Mapped[datetime | None] = mapped_column(default=None)
 
 
 def _aware(dt: datetime) -> datetime:
@@ -77,13 +82,21 @@ class Storage:
             columns = {c["name"] for c in inspector.get_columns("history")}
             if "sha256" not in columns:
                 stmts.append("ALTER TABLE history ADD COLUMN sha256 VARCHAR(64) DEFAULT ''")
+            if "uploaded_to" not in columns:
+                stmts.append("ALTER TABLE history ADD COLUMN uploaded_to VARCHAR(64)")
+            if "uploaded_at" not in columns:
+                stmts.append("ALTER TABLE history ADD COLUMN uploaded_at DATETIME")
         return stmts
 
     def _migrate(self) -> None:
         """Apply pending additive migrations, backing up the DB file first.
 
-        A dated copy (``<db>.bak-<stamp>``) is made before any schema change and
-        removed only on success; a failed migration leaves the backup in place.
+        A dated copy (``<db>.bak-<stamp>``) is made before any schema change (only when
+        there is a migration to run). If the backup cannot be made, the migration does
+        not run at all: better to stay on the old schema and say so than to change the
+        DB without a safety net -- a real incident once wiped user history. On success
+        the backup is kept (the three most recent are retained, older ones pruned); a
+        failed migration also leaves its backup in place.
         """
         from sqlalchemy import text
 
@@ -91,7 +104,12 @@ class Storage:
         if not statements:
             return
 
-        backup = self._backup_db()
+        try:
+            backup = self._backup_db()
+        except OSError as exc:
+            # No backup -> no migration. Loud and visible; the DB is left untouched.
+            log.error("db_backup_failed_migration_skipped", error=str(exc))
+            raise
         try:
             with self._engine.begin() as conn:
                 for sql in statements:
@@ -99,20 +117,30 @@ class Storage:
         except Exception:
             log.error("db_migration_failed", backup=str(backup) if backup else None)
             raise
-        if backup is not None:
-            backup.unlink(missing_ok=True)
-            log.info("db_migration_ok", removed_backup=str(backup))
+        log.info("db_migration_ok", backup=str(backup) if backup else None)
+        self._prune_backups(keep=3)
 
     def _backup_db(self) -> Path | None:
         """Copy the DB file next to itself before a migration (None if empty/new)."""
         if not self._db_path.exists() or self._db_path.stat().st_size == 0:
             return None
         self._engine.dispose()  # release the pooled connection before copying
-        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+        stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S-%f")
         backup = self._db_path.with_name(f"{self._db_path.name}.bak-{stamp}")
         shutil.copy2(self._db_path, backup)
         log.info("db_backup_created", path=str(backup))
         return backup
+
+    def _prune_backups(self, *, keep: int) -> None:
+        """Keep the ``keep`` most recent migration backups, delete older ones (§ point 8).
+
+        These are our own files (``<db>.bak-<utc-stamp>``), never the user's data. The
+        UTC stamp sorts chronologically, so lexical sort by name is newest-last.
+        """
+        backups = sorted(self._db_path.parent.glob(f"{self._db_path.name}.bak-*"))
+        for old in backups[:-keep] if keep > 0 else backups:
+            with contextlib.suppress(OSError):
+                old.unlink()
 
     # ---- cache (§6 stage 3) -------------------------------------------- #
     def get_cached(self, sha256: str, *, ttl_days: int) -> ScanReport | None:
@@ -167,6 +195,10 @@ class Storage:
                     sources=sources,
                     sha256=sha256,
                     created_at=report.finished_at,
+                    # Same source of truth as the file branch: straight from the report,
+                    # which fills these from the UploadOutcome (no second mechanism).
+                    uploaded_to=report.uploaded_to,
+                    uploaded_at=report.uploaded_at,
                 )
             )
             session.commit()

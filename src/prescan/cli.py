@@ -65,7 +65,12 @@ def scan(
         bool,
         typer.Option(
             "--allow-upload",
-            help="Accepted but inert: cloud file upload is not implemented in this version.",
+            help=(
+                "Consent to upload this file to the cloud (VirusTotal) for a fresh "
+                "scan when it is unknown there. Off by default; the file leaves your "
+                "machine only with this flag. Also requires turning off 'Never upload "
+                "files to the cloud' in Settings. Ignored under --no-network."
+            ),
         ),
     ] = False,
     download: Annotated[
@@ -76,22 +81,41 @@ def scan(
     quiet: Annotated[bool, typer.Option("--quiet", help="Only the verdict line.")] = False,
 ) -> None:
     """Scan a file or URL and report a verdict. Exit code encodes the verdict."""
-    if allow_upload:
-        # Accepted (so existing scripts don't break) but stage 13 does not exist yet,
-        # so allow_cloud_upload is read by nothing -- say so rather than silently no-op.
+    config = AppConfig.load()
+
+    # The persistent lock is the master switch (§6.2, §10.5): only the user can turn
+    # it off in Settings. A per-run --allow-upload cannot override it. If consent was
+    # given while the lock is closed, refuse loudly and name the setting to change --
+    # never silently ignore an explicit request to upload. Nothing is scanned.
+    if allow_upload and config.never_upload_files:
         typer.secho(
-            "--allow-upload has no effect: cloud file upload is not implemented in "
-            "this version; the file does not leave your machine.",
+            "--allow-upload was refused: uploads are locked off. Turn off "
+            "'Never upload files to the cloud' in Settings (never_upload_files in "
+            "config.toml) to allow it. Nothing was uploaded or scanned.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(_RUNTIME_ERROR)
+
+    # --no-network keeps everything local, so it beats --allow-upload: nothing can
+    # leave the machine. Honour the stronger privacy switch and note the override.
+    upload_consent = allow_upload and not no_network
+    if allow_upload and no_network:
+        typer.secho(
+            "--allow-upload ignored: --no-network keeps everything local; the file "
+            "is not uploaded.",
             fg=typer.colors.YELLOW,
             err=True,
         )
+
     is_url = target.startswith(("http://", "https://"))
+    upload_noun = "downloaded file" if is_url else "file"
     if is_url:
         request = ScanRequest(
             target_kind=TargetKind.URL,
             url=target,
             allow_network=not no_network,
-            allow_cloud_upload=allow_upload,
+            allow_cloud_upload=upload_consent,
             allow_download=download,
             force_refresh=refresh,
             timeout_s=timeout,
@@ -105,14 +129,25 @@ def scan(
             target_kind=TargetKind.FILE,
             file_path=path,
             allow_network=not no_network,
-            allow_cloud_upload=allow_upload,
+            allow_cloud_upload=upload_consent,
             allow_download=download,
             force_refresh=refresh,
             timeout_s=timeout,
         )
 
+    # Announce the permission and the service BEFORE the scan, so both are visible
+    # even before any bytes move. Never silenced by --quiet -- an upload is exactly
+    # the kind of thing the user must always see.
+    if upload_consent:
+        typer.secho(
+            f"Cloud upload authorized: if the {upload_noun} is unknown to VirusTotal, "
+            f"its bytes will be sent there for a fresh scan.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+
     try:
-        report = asyncio.run(_run_scan(request))
+        report = asyncio.run(_run_scan(request, config))
     except Exception as exc:
         typer.secho(f"Scan failed: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(_RUNTIME_ERROR) from exc
@@ -128,6 +163,24 @@ def scan(
         typer.echo(to_json(report))
     else:
         _print_human(report, quiet=quiet)
+
+    # Report the upload FACT after the scan, straight from the report -- the single
+    # source of truth (uploaded_to / uploaded_at). Honest either way, never silenced
+    # by --quiet: the user always learns whether the file left the machine.
+    if upload_consent:
+        if report.uploaded_to is not None:
+            when = report.uploaded_at.isoformat() if report.uploaded_at else "an unknown time"
+            typer.secho(
+                f"The {upload_noun} was uploaded to {report.uploaded_to} at {when}.",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
+        else:
+            typer.secho(
+                f"The {upload_noun} was not sent to the cloud.",
+                fg=typer.colors.BRIGHT_BLACK,
+                err=True,
+            )
 
     raise typer.Exit(_EXIT_BY_VERDICT.get(report.verdict, _RUNTIME_ERROR))
 
@@ -254,13 +307,12 @@ def update_clamav() -> None:
     typer.secho(result.message, fg=colour)
 
 
-async def _run_scan(request: ScanRequest) -> ScanReport:
+async def _run_scan(request: ScanRequest, config: AppConfig) -> ScanReport:
     """Build a pipeline (with cache/history storage) from config and run it."""
     from prescan.core.config import Paths
     from prescan.core.pipeline import Pipeline
     from prescan.core.storage import Storage
 
-    config = AppConfig.load()
     paths = Paths.resolve()
     paths.ensure()
     storage = Storage(paths.db_path)

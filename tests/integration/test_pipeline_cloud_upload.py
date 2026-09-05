@@ -26,7 +26,8 @@ from prescan.core.models import (
     UploadOutcome,
     Verdict,
 )
-from prescan.core.pipeline import Pipeline
+from prescan.core.pipeline import Pipeline, upload_gate_reason
+from prescan.core.providers import upload_provider_name
 
 _SENT_AT = datetime(2026, 9, 5, 12, 0, tzinfo=UTC)
 
@@ -355,3 +356,68 @@ async def test_default_config_sends_no_file_body(
 
     await Pipeline(AppConfig()).run(request)  # AppConfig() -> defaults: never_upload_files=True
     assert upload_route.called is False, "a file body was sent under the default config"
+
+
+# --- upload_could_help: one decision, shared by the gate and the report (point 7) - #
+def _matches_gate(report: Any) -> bool:
+    """The report flag equals the gate's own decision on the same signals/stages."""
+    would_help = upload_gate_reason(report.signals, report.stages, upload_provider_name()) is None
+    return report.upload_could_help == (would_help and report.uploaded_to is None)
+
+
+@pytest.mark.asyncio
+async def test_upload_could_help_true_when_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A normal scan (no consent): reputation ran and did not know the file.
+    report = await _run(monkeypatch, tmp_path, never_upload=True, allow_upload=False)
+    assert report.upload_could_help is True  # lock-independent: it is "would it help"
+    assert _matches_gate(report)
+
+
+@pytest.mark.asyncio
+async def test_upload_could_help_false_when_known(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    known = _vt_signal(malicious=0, total=70, authoritative_clean=True)
+    report = await _run(
+        monkeypatch, tmp_path, never_upload=False, allow_upload=False, hash_signals=[known]
+    )
+    assert report.upload_could_help is False  # the cloud already knows the file
+    assert _matches_gate(report)
+
+
+@pytest.mark.asyncio
+async def test_upload_could_help_false_when_dangerous(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    hard = Signal(
+        source="yara-x",
+        kind=SourceKind.LOCAL_ENGINE,
+        severity=Severity.CRITICAL,
+        title_key="k",
+        title_en="rule",
+        decisive=True,
+        weight=90,
+    )
+    report = await _run(
+        monkeypatch, tmp_path, never_upload=False, allow_upload=False, engine_signals=[hard]
+    )
+    assert report.upload_could_help is False  # already decided; nothing to add
+    assert _matches_gate(report)
+
+
+@pytest.mark.asyncio
+async def test_upload_could_help_false_when_reputation_did_not_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No key -> reputation skipped -> "unknown" is not established, so no offer.
+    report = await _run(
+        monkeypatch,
+        tmp_path,
+        never_upload=False,
+        allow_upload=False,
+        hash_availability=Availability.NO_KEY,
+    )
+    assert report.upload_could_help is False
+    assert _matches_gate(report)

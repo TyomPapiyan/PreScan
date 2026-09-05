@@ -47,6 +47,7 @@ from prescan.core.providers import (
     build_hash_providers,
     build_upload_provider,
     build_url_providers,
+    upload_provider_name,
 )
 from prescan.core.providers.base import Provider
 from prescan.core.ratelimit import RateLimiter
@@ -66,6 +67,38 @@ OnStage = Callable[[StageResult], None]
 
 #: Engines whose completion counts as an authoritative clean/dirty verdict (§8.3).
 _AUTHORITATIVE = frozenset({"clamav", "defender"})
+
+#: Marks signals that describe a file downloaded from a URL, not the URL itself.
+#: A clean such signal is authoritative for the *body* but not for the *link* (a URL
+#: can serve different content), so URL SAFE-clearance ignores it (§8.3, F0).
+DOWNLOADED_BODY = "downloaded_body"
+
+
+def upload_gate_reason(
+    signals: list[Signal], stages: list[StageResult], provider_name: str
+) -> str | None:
+    """Return None if a cloud upload would add something, else why it would not.
+
+    One decision, two readers, so they can never drift (§6.2): the stage-13 gate turns
+    a non-None reason into an INFO signal, and the report's ``upload_could_help`` flag is
+    exactly ``reason is None``. An upload helps only when the verdict is not already
+    decisive, the upload provider's own hash reputation actually ran (so "unknown" is
+    established, not assumed -- privacy over completeness), and it did not already know
+    the file.
+    """
+    if any(s.decisive for s in signals):
+        return "the file is already flagged dangerous locally"
+    rep_done = any(
+        s.stage_id == provider_name
+        and s.title_key == "stage.reputation"
+        and s.status is StageStatus.DONE
+        for s in stages
+    )
+    if not rep_done:
+        return "could not verify whether the cloud already has this file"
+    if any(s.source == provider_name for s in signals):
+        return "the cloud already knows this file"
+    return None
 
 
 class Pipeline:
@@ -182,6 +215,9 @@ class Pipeline:
             unavailable_sources=unavailable,
             uploaded_to=uploaded_to,
             uploaded_at=uploaded_at,
+            # Same function the gate uses -> the UI never re-derives the offer (point 6).
+            upload_could_help=uploaded_to is None
+            and upload_gate_reason(signals, stages, upload_provider_name()) is None,
         )
 
         # Persist a completed, non-cached scan to cache and history.
@@ -412,26 +448,11 @@ class Pipeline:
         provider = build_upload_provider(
             self._limiter, allow_network=request.allow_network and self._config.allow_network
         )
-        if any(s.decisive for s in signals_so_far):
-            reason = "the file is already flagged dangerous locally"
+        # The "would an upload help?" decision lives in one shared function so the gate
+        # and the report's upload_could_help flag can never disagree (§6.2, F0 point 6).
+        reason = upload_gate_reason(signals_so_far, stages, provider.name)
+        if reason is not None:
             return [self._cloud_skip_info(reason)], None, None
-        # §6 line 836: upload only if the file is unknown to *this* provider (the one we
-        # would send it to). We can only assert "unknown" if that provider's hash lookup
-        # actually ran: if it failed or was skipped we have NOT established the file is
-        # unknown, so we do NOT upload -- privacy over completeness (point 5).
-        rep_stage = next(
-            (
-                s
-                for s in stages
-                if s.stage_id == provider.name and s.title_key == "stage.reputation"
-            ),
-            None,
-        )
-        if rep_stage is None or rep_stage.status is not StageStatus.DONE:
-            reason = "could not verify whether the cloud already has this file"
-            return [self._cloud_skip_info(reason)], None, None
-        if any(s.source == provider.name for s in signals_so_far):
-            return [self._cloud_skip_info("the cloud already knows this file")], None, None
 
         availability, detail = await provider.availability()
         if availability is not Availability.READY:

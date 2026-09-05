@@ -271,3 +271,10 @@ class ScanReport(BaseModel):
     # from UploadOutcome.sent/sent_at -- the single source of truth. UTC in storage.
     uploaded_to: str | None = None
     uploaded_at: datetime | None = None
+
+    # Stage 13 offer: core's single answer to "would a cloud upload add anything?"
+    # -- computed by the very code the upload gate uses, so the UI never re-derives
+    # it (§6.2). True only when the verdict is not decisive and the upload provider's
+    # hash reputation ran and did not already know the file. Defaults False so reports
+    # written before this field existed still load.
+    upload_could_help: bool = False

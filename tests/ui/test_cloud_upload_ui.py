@@ -20,7 +20,6 @@ from prescan.core.models import (
     FileInfo,
     ScanReport,
     ScanRequest,
-    Severity,
     Signal,
     SourceKind,
     TargetKind,
@@ -137,6 +136,7 @@ def _file_report(
     verdict: Verdict,
     signals: list[Signal] | None = None,
     uploaded_to: str | None = None,
+    upload_could_help: bool = False,
 ) -> ScanReport:
     f = tmp_path / "sample.bin"
     f.write_bytes(b"data")
@@ -165,46 +165,32 @@ def _file_report(
         verdict_reason_key="k",
         verdict_reason_en="reason",
         uploaded_to=uploaded_to,
+        upload_could_help=upload_could_help,
     )
 
 
 # --------------------------------------------------------------------------- #
 # Behavioural tests (points 24-25)
 # --------------------------------------------------------------------------- #
-def test_offer_hidden_when_dangerous_or_known(gui: Any, tmp_path: Path) -> None:
-    """Point 24: no offer when the verdict is DANGEROUS or the file is cloud-known."""
+def test_offer_reads_core_field_and_needs_a_file(gui: Any, tmp_path: Path) -> None:
+    """Point 24 (+ point 6): the offer only reads core's upload_could_help + report.file.
+
+    The "would it help" logic lives in core (verdict, cloud-known); the bridge does not
+    re-derive it. So the offer is shown iff the field is True and there is a file to
+    describe, and hidden whenever the field is False.
+    """
     bridge = gui.bridge
-    bridge._config.allow_network = True
     try:
-        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.DANGEROUS))
-        assert bridge.canOfferUpload is False  # decided; no point uploading
-
-        known = Signal(
-            source=_SERVICE,  # the upload provider already knows this file
-            kind=SourceKind.CLOUD_REPUTATION,
-            severity=Severity.INFO,
-            title_key="k",
-            title_en="known",
-        )
-        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SUSPICIOUS, signals=[known]))
-        assert bridge.canOfferUpload is False  # already known to the cloud
-
-        # Unknown + not dangerous -> the offer is available.
-        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SUSPICIOUS))
-        assert bridge.canOfferUpload is True
-    finally:
-        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE, uploaded_to=_SERVICE))
-
-
-def test_offer_hidden_when_network_off(gui: Any, tmp_path: Path) -> None:
-    """No offer with the network off: nothing could be uploaded anyway."""
-    bridge = gui.bridge
-    bridge._config.allow_network = False
-    try:
+        # Field False -> never offered, whatever else is true.
         bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SUSPICIOUS))
         assert bridge.canOfferUpload is False
+        # Field True + a file present -> offered.
+        bridge._apply_report(
+            _file_report(tmp_path, verdict=Verdict.SUSPICIOUS, upload_could_help=True)
+        )
+        assert bridge.canOfferUpload is True
     finally:
-        bridge._config.allow_network = True
+        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SAFE))
 
 
 def test_lock_disables_the_offer_and_names_the_setting(gui: Any, tmp_path: Path) -> None:
@@ -233,7 +219,9 @@ def test_upload_slot_reruns_with_consent(gui: Any, tmp_path: Path, monkeypatch: 
     started: list[ScanRequest] = []
     monkeypatch.setattr(bridge, "_start", lambda req: started.append(req))
     try:
-        bridge._apply_report(_file_report(tmp_path, verdict=Verdict.SUSPICIOUS))
+        bridge._apply_report(
+            _file_report(tmp_path, verdict=Verdict.SUSPICIOUS, upload_could_help=True)
+        )
         assert bridge.canOfferUpload is True
         bridge.uploadCurrentToCloud()
         assert len(started) == 1

@@ -157,25 +157,12 @@ class Bridge(QObject):
     # ---- stage 13: cloud upload offer (asked AFTER the scan, §6.2) ----- #
     # Consent is a deliberate action on the result screen, never a pre-scan prompt:
     # whether an upload could help is only known once the scan has run, and asking up
-    # front trains people to click "yes" blindly. The offer appears only when it could
-    # add something -- the verdict is not DANGEROUS and the file is unknown to the
-    # cloud provider -- and only for a direct file scan (the path core supports).
+    # front trains people to click "yes" blindly. Whether an upload could add anything
+    # is decided once, in core, by the very code the upload gate uses (report
+    # .upload_could_help); the UI only reads it and needs the file details to show
+    # (point 6). It never re-derives the gate logic here.
     def _can_offer_upload(self, report: ScanReport | None) -> bool:
-        from prescan.core.providers import upload_provider_name
-
-        if report is None or report.file is None:
-            return False
-        if report.request.target_kind is not TargetKind.FILE:
-            return False
-        if not self._config.allow_network:  # nothing can be uploaded with the net off
-            return False
-        if report.verdict is Verdict.DANGEROUS:  # already decided; no point uploading
-            return False
-        if report.uploaded_to is not None:  # already uploaded in this session
-            return False
-        # "Known to the cloud" = the upload provider's hash reputation already
-        # identified the file; then a fresh upload adds nothing (mirrors the gate).
-        return not any(s.source == upload_provider_name() for s in report.signals)
+        return report is not None and report.upload_could_help and report.file is not None
 
     @Property(bool, notify=resultChanged)
     def canOfferUpload(self) -> bool:

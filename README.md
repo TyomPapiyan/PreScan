@@ -49,13 +49,21 @@ Light and dark variants of every screen live in [`docs/screenshots/`](docs/scree
 - **Microsoft Defender** — invoked via `MpCmdRun.exe` on Windows; reported unsupported and
   skipped on Linux.
 - **Static PE / ELF** — headers, sections, imports and Authenticode presence parsed with LIEF.
-- **Documents** — VBA macros in Office files (oletools) and PDF structure (pikepdf).
+- **Documents** — VBA macros in Office files (oletools) and *active* PDF content
+  (pikepdf): JavaScript, an external `/Launch`, embedded files, a form `/SubmitForm`. A
+  bare automatic action (`/OpenAction`) is treated as informational, not suspicious —
+  clean PDFs commonly set it just to fix the initial view.
 - **File identity & hashing** — real type detection (puremagic), extension-mismatch checks,
   MD5 / SHA-1 / SHA-256, imphash, and fuzzy CTPH (`ppdeep`).
 
 ### 🧠 ML second opinion
-- A LightGBM classifier converted to **ONNX** scores the file from **EMBER2024 feature-version-3**
-  vectors computed on `pefile` — the runtime uses only `onnxruntime`, `numpy` and `pefile`.
+- A LightGBM classifier converted to **ONNX** scores **executables** from **EMBER2024
+  feature-version-3** vectors computed on `pefile` — the runtime uses only `onnxruntime`,
+  `numpy` and `pefile`.
+- **It runs only on Windows PE and Linux ELF executables** — the formats the model is
+  reliable on. For any other type (text, images, archives, PDF, …) the ML stage is
+  skipped and reported "does not apply to this file type"; no score is guessed for a
+  format the model was not built for.
 - The model (`model.onnx`) is **not** bundled; you install it once (see *[The ML model](#-the-ml-model)*).
   Until then the ML stage degrades gracefully and the file scan returns `UNKNOWN` rather than a
   guess.

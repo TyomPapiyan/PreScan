@@ -37,7 +37,9 @@ vba_macro             = 30
 vba_autoexec          = 45
 vba_obfuscated        = 40
 pdf_javascript        = 35
-pdf_openaction        = 35
+pdf_openaction        = 0     # §I: an automatic action alone is informational, not risk
+pdf_launch            = 60    # /Launch runs an external program on open
+pdf_submitform        = 35    # /SubmitForm exfiltrates form data to a remote target
 pdf_embedded_exe      = 60
 
 [capability]

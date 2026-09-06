@@ -9,7 +9,8 @@ import pytest
 
 from prescan.core.engines.base import ScanContext
 from prescan.core.engines.documents import DocumentsEngine
-from prescan.core.models import FileInfo
+from prescan.core.models import FileInfo, Severity, Verdict
+from prescan.core.scoring import score
 from tests.fixtures.zipbomb import ratio_bomb
 
 
@@ -29,7 +30,13 @@ def _ctx(path: Path, workdir: Path) -> ScanContext:
 
 
 @pytest.mark.asyncio
-async def test_pdf_openaction_flagged(tmp_path: Path) -> None:
+async def test_pdf_openaction_with_javascript_escalates(tmp_path: Path) -> None:
+    """Point 20: an automatic action that runs JavaScript is the dangerous combination --
+    detection must NOT be lost: it escalates to SUSPICIOUS or worse.
+
+    (Reworked from the old test that asserted /OpenAction alone was flagged: §I demotes a
+    bare automatic action to informational, so the meaningful case is the active content.)
+    """
     import pikepdf
 
     pdf = pikepdf.new()
@@ -39,8 +46,33 @@ async def test_pdf_openaction_flagged(tmp_path: Path) -> None:
     pdf.save(target)
 
     signals = await DocumentsEngine().scan(_ctx(target, tmp_path / "work"))
-    keys = {s.title_key for s in signals}
-    assert "signal.pdf.openaction" in keys
+    assert any(s.title_key == "signal.pdf.javascript" and s.data.get("escalates") for s in signals)
+    verdict, _r, _k, _rr = score(signals, had_authoritative_source=True)
+    assert verdict in (Verdict.SUSPICIOUS, Verdict.DANGEROUS)
+
+
+@pytest.mark.asyncio
+async def test_pdf_openaction_alone_is_informational(tmp_path: Path) -> None:
+    """Point 19: an automatic action with no active content (a plain GoTo) is INFO with
+    zero weight and does not move the verdict -- clean PDFs commonly set it (§I)."""
+    import pikepdf
+
+    pdf = pikepdf.new()
+    page = pdf.add_blank_page()
+    # A benign navigation action: open at the first page. No JavaScript, no Launch, etc.
+    pdf.Root.OpenAction = pikepdf.Dictionary(S=pikepdf.Name.GoTo, D=[page.obj, pikepdf.Name.Fit])
+    target = tmp_path / "doc.pdf"
+    pdf.save(target)
+
+    signals = await DocumentsEngine().scan(_ctx(target, tmp_path / "work"))
+    openaction = next(s for s in signals if s.title_key == "signal.pdf.openaction")
+    assert openaction.severity is Severity.INFO
+    assert openaction.weight == 0
+    assert openaction.data.get("escalates") is not True
+    # No escalating signal at all -> the verdict is not moved by the automatic action.
+    assert not any(s.data.get("escalates") for s in signals)
+    verdict, _r, _k, _rr = score(signals, had_authoritative_source=True)
+    assert verdict not in (Verdict.SUSPICIOUS, Verdict.DANGEROUS)
 
 
 @pytest.mark.asyncio

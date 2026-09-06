@@ -9,9 +9,10 @@ not an exception that escapes.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import zipfile
 from pathlib import Path
-from typing import ClassVar, Final
+from typing import Any, ClassVar, Final
 
 import structlog
 
@@ -131,33 +132,24 @@ class DocumentsEngine:
 
     # ---- PDF ------------------------------------------------------------ #
     def _analyse_pdf(self, path: Path) -> list[Signal]:
-        """Detect /JavaScript, /OpenAction, /Launch and embedded files."""
+        """Flag *active* PDF content; an automatic action alone is only informational.
+
+        Measurement over 400 clean system PDFs (§I): 1% declared /OpenAction and NONE of
+        those carried active content, while /JavaScript, an embedded file, /Launch and
+        /SubmitForm fired on 0%. So an automatic action by itself -- clean PDFs set it to
+        fix the initial view -- is INFO with zero weight and never moves the verdict; the
+        verdict escalates only on active content (JavaScript, an external Launch, an
+        embedded file, a form submission), which is what actually runs on open.
+        """
         import pikepdf
 
         signals: list[Signal] = []
         with pikepdf.open(path) as pdf:
             root = pdf.Root
             root_keys = set(map(str, root.keys()))
-            name_keys: set[str] = set()
-            if "/Names" in root_keys:
-                try:
-                    name_keys = set(map(str, root.Names.keys()))
-                except (AttributeError, KeyError):
-                    name_keys = set()
+            has_js, has_launch, has_submitform, has_embedded = self._pdf_active_content(pdf)
 
-            if "/OpenAction" in root_keys or "/AA" in root_keys:
-                signals.append(
-                    Signal(
-                        source=self.name,
-                        kind=self.kind,
-                        severity=Severity.MEDIUM,
-                        title_key="signal.pdf.openaction",
-                        title_en="PDF defines an automatic action (/OpenAction)",
-                        weight=weight("documents", "pdf_openaction", 35),
-                        data={"escalates": True},
-                    )
-                )
-            if "/JavaScript" in name_keys or "/JavaScript" in root_keys:
+            if has_js:
                 signals.append(
                     Signal(
                         source=self.name,
@@ -170,7 +162,31 @@ class DocumentsEngine:
                         data={"escalates": True},
                     )
                 )
-            if "/EmbeddedFiles" in name_keys:
+            if has_launch:
+                signals.append(
+                    Signal(
+                        source=self.name,
+                        kind=self.kind,
+                        severity=Severity.HIGH,
+                        title_key="signal.pdf.launch",
+                        title_en="PDF launches an external program (/Launch)",
+                        weight=weight("documents", "pdf_launch", 60),
+                        data={"escalates": True},
+                    )
+                )
+            if has_submitform:
+                signals.append(
+                    Signal(
+                        source=self.name,
+                        kind=self.kind,
+                        severity=Severity.MEDIUM,
+                        title_key="signal.pdf.submitform",
+                        title_en="PDF submits a form to a remote target (/SubmitForm)",
+                        weight=weight("documents", "pdf_submitform", 35),
+                        data={"escalates": True},
+                    )
+                )
+            if has_embedded:
                 signals.append(
                     Signal(
                         source=self.name,
@@ -182,7 +198,63 @@ class DocumentsEngine:
                         data={"escalates": True},
                     )
                 )
+            # An automatic action on its own is informational only (§I): shown so the
+            # user sees it, but zero weight and no escalation -- it never moves the verdict.
+            if "/OpenAction" in root_keys or "/AA" in root_keys:
+                signals.append(
+                    Signal(
+                        source=self.name,
+                        kind=self.kind,
+                        severity=Severity.INFO,
+                        title_key="signal.pdf.openaction",
+                        title_en="PDF defines an automatic action (/OpenAction)",
+                        weight=weight("documents", "pdf_openaction", 0),
+                        data={},
+                    )
+                )
         return signals
+
+    @staticmethod
+    def _pdf_active_content(pdf: Any) -> tuple[bool, bool, bool, bool]:
+        """Walk the PDF object graph for active content (JS, Launch, SubmitForm, embedded).
+
+        A bounded, cycle-safe traversal from the root so an action embedded *inline* in
+        /OpenAction, /AA or an annotation is found -- iterating only indirect objects would
+        miss those. Returns (javascript, launch, submitform, embedded_file).
+        """
+        js = launch = submitform = embedded = False
+        seen: set[Any] = set()
+        stack: list[Any] = [pdf.Root]
+        steps = 0
+        while stack and steps < 5000:
+            steps += 1
+            obj = stack.pop()
+            try:
+                if obj.is_indirect:
+                    if obj.objgen in seen:
+                        continue
+                    seen.add(obj.objgen)
+            except Exception:  # noqa: BLE001 - scalars have no is_indirect
+                pass
+            try:
+                keys = set(map(str, obj.keys()))
+            except Exception:  # noqa: BLE001 - not a dictionary/stream
+                with contextlib.suppress(Exception):
+                    stack.extend(list(obj))  # an array: descend into its items
+                continue
+            action = str(obj.get("/S", "")) if "/S" in keys else ""
+            if action == "/Launch":
+                launch = True
+            elif action == "/SubmitForm":
+                submitform = True
+            elif action == "/JavaScript" or "/JS" in keys:
+                js = True
+            if "/EF" in keys:
+                embedded = True
+            for k in keys:
+                with contextlib.suppress(Exception):
+                    stack.append(obj[k])
+        return js, launch, submitform, embedded
 
     # ---- Archives ------------------------------------------------------- #
     def _analyse_archive(self, ctx: ScanContext) -> list[Signal]:
